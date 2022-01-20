@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:thoth-contract"
+
+    - path: "app/Main.hs"
+      component: "thoth-contract:exe:thoth-contract-pab"
+
+    - path: "test"
+      component: "thoth-contract:test:thoth-contract-test"

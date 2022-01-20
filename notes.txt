@@ -1,0 +1,34 @@
+Thoth designing and planning:
+
+Some Tenets to keep in mind during design
+ - Openness
+ - Sharing knowledge
+ - Asking good questions 
+ - Answering questions
+ - Conversations among peers (P2P)
+ - Inequality through effort 
+ - Experimentation 
+ - Resources
+ - Collaboration 
+
+The design of the contract would be mainly done using petrinets, this is because they provide an simple visual guide which is appealling 
+and more importantly we can formalize the petri net using tools from category theory. This will ensure that the design is not only correct
+but we can also check for weird errors (e.g deadlocks or unwanted 'markings') during design. This will help us understand the platform even 
+before we start writing the haskell code. 
+
+Thoth Development:
+
+The development will occur during several phases:
+
+ - Developing and testing the contract in cardano blockchain 
+ - Developing and testing the User application ('Wallet') 
+ - Extending the contract to other blockchains (i.e E.V.Ms, Algorand, Tron, Tezos, Klatyn)
+
+
+Some ideas on imlementation
+ - We'll have that each 'researcher' have a page (this might correspond to a script address with collection of tokens and datum representing the work)
+ - The overall Thoth page (basically the knowledge) will consist of two parts, the page itself which will host the main Thoth token (Multi asset token)
+   and an oracle which would provide a datum for a 'knowledge value' and  every time a change happens it updates this value. (The researcher will reference this value for any transaction)
+ - This knowledge value will also be used for the 'energy platform updates' which happen at 'every epoch' where the values of researcher's work is mappended by a multiplier (this would represent how valuable this work is to the knowledge) 
+    (one can think about this as a sun and a planet with life forms where the life form that 'converts the most information' is 'winning')
+ - Every researcher's page would drive what the researcher would see on the front end (i.e It would be a different interface (except for common platform elements)) 
