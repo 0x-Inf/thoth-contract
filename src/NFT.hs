@@ -62,8 +62,8 @@ type NFTSchema = Endpoint "mint" TokenName
 
 mint :: TokenName -> Contract w NFTSchema Text ()
 mint tn = do
-    pkh    <- Contract.ownPubKeyHash
-    utxos <- utxosAt (pubKeyHashAddress pkh)
+    pkh    <- Contract.ownPaymentPubKeyHash
+    utxos <- utxosAt $ pubKeyHashAddress pkh Nothing 
     case Map.keys utxos of
         []       -> Contract.logError @String "no utxo found"
         oref : _ -> do
@@ -85,7 +85,7 @@ mkKnownCurrencies []
 
 test :: IO ()
 test = runEmulatorTraceIO $ do
-    let tn = "ABC"
+    let tn = "THOTH"
     h1 <- activateContractWallet (knownWallet 1) endpoints
     h2 <- activateContractWallet (knownWallet 2) endpoints
     callEndpoint @"mint" h1 tn

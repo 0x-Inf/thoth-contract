@@ -8,8 +8,11 @@ Some Tenets to keep in mind during design
  - Conversations among peers (P2P)
  - Inequality through effort 
  - Experimentation 
- - Resources
+ - Resources (Funding etc)
  - Collaboration 
+ - 'peer review' (this might be implicit with how the contract will work)
+ - 'Journals' (basically curations of knowledge)
+ - Accreditation (A peer can certify another peer but then it depends on which peer i.e can have strong or weak credits)
 
 The design of the contract would be mainly done using petrinets, this is because they provide an simple visual guide which is appealling 
 and more importantly we can formalize the petri net using tools from category theory. This will ensure that the design is not only correct
@@ -32,3 +35,6 @@ Some ideas on imlementation
  - This knowledge value will also be used for the 'energy platform updates' which happen at 'every epoch' where the values of researcher's work is mappended by a multiplier (this would represent how valuable this work is to the knowledge) 
     (one can think about this as a sun and a planet with life forms where the life form that 'converts the most information' is 'winning')
  - Every researcher's page would drive what the researcher would see on the front end (i.e It would be a different interface (except for common platform elements)) 
+ - Have that the 'main Thoth Token' script carry a datum (ThothState) that represents the current state of knowledge where it maybe a monad that 
+   carries the context of ___ . We might need the Monad instance for this since we want the benefits of it acting like an Applicative and also a Functor.
+   It's sort of like the State Monad but instead of the context being a computation, it's a ____ ('knowledge representation')
