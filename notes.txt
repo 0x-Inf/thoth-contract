@@ -13,6 +13,11 @@ Some Tenets to keep in mind during design
  - 'peer review' (this might be implicit with how the contract will work)
  - 'Journals' (basically curations of knowledge)
  - Accreditation (A peer can certify another peer but then it depends on which peer i.e can have strong or weak credits)
+ - Values system 
+ - Focus on Problems and the Efforts used for particular problems 
+
+Oracles will provided some needed real world data such as formal proofs (e.g mathlib, MMT) or calculations e.g from wolfram Math. Other data we might need 
+inludes existence of data sets etc ...
 
 The design of the contract would be mainly done using petrinets, this is because they provide an simple visual guide which is appealling 
 and more importantly we can formalize the petri net using tools from category theory. This will ensure that the design is not only correct
@@ -24,7 +29,7 @@ Thoth Development:
 The development will occur during several phases:
 
  - Developing and testing the contract in cardano blockchain 
- - Developing and testing the User application ('Wallet') 
+ - Developing and testing the User application ('Wallet' on top of 'wallet'), i,e weirdly interfaced wallet  
  - Extending the contract to other blockchains (i.e E.V.Ms, Algorand, Tron, Tezos, Klatyn)
 
 
@@ -38,3 +43,94 @@ Some ideas on imlementation
  - Have that the 'main Thoth Token' script carry a datum (ThothState) that represents the current state of knowledge where it maybe a monad that 
    carries the context of ___ . We might need the Monad instance for this since we want the benefits of it acting like an Applicative and also a Functor.
    It's sort of like the State Monad but instead of the context being a computation, it's a ____ ('knowledge representation')
+
+A note about plutus This is nothing else than a state machine, where our datum represents the state and the redeemer the state transition. Expanding this 
+to our optics look on bidirectional processes 
+
+The front-end would be displaying some datum which is found by consuming transaction.
+
+To minmize the transaction costs involved we'll try and minimize the tokens send (<= min-tr-fee) by using a single native asset when using the front-end, 
+this means that we need a way to store what changes can happen to utxos and mappend them to one token. 
+
+The bulk of the operations will try and utilise the producing of UTxos instead of spending them to reduce the chances of congestion where multiple 
+users try to spend one UTxo. The schemes that involve spending UTxos will have to expect very few users to be spending specific UTxos concurrently.
+For instance we could spend Utxos when updating our user Token since we expect that only the user will ever want and can spend that UTxo. When interacting 
+with for instance messages, producing UTxo seems more appropriate as we have one for each atomic change(interaction...?). 
+In other words operations in the Thoth world would most likely be UTxo producing transactions rather than consuming 
+
+The effort thing we'll be 'measuring' will be useful in seing what problems people are putting Resources into and this will help guide what goals as a 
+species we would like to achieve. This will aid in clear thinking. 
+
+
+Thoth Core 
+
+-- This will act like a factory for relevant tokens, and use this to have a relationship network of the tokens. For instance suppose I create a researcher 
+'account' by minting the relevant token then the oracle might create a script address where the minted token's pkh is authorized to 'spend'. This now will
+become where the researcher will make their updates. Once updates are made the user makes another request to the oracle to 'sync' the updates and this will
+require paying some 'oracle' fees. That's one function for the oracle
+
+the peer oracle can be a script address where the peer can mint tokens corresponding to event in the 'real-world' which can be translated to a transaction. 
+the thoth oracle would be for presenting a unified view of the represented events of the peers (synced or not)
+
+Can have someone set up a script address like an continuous faucet for n tokens where they can allow certain pkhs to spend in a certain interval. Like it's
+a timed bank.
+
+'Dynamic' courts of first knowledge (\phi). Here the users can create courts which specialize in certain knowledge types and one can submit a collection 
+of items and the court can decide if the items are first knowledge or not... among other features 
+
+We'll use the datum at some utxos to specify how a researcher interacts with specific parts of the network. For instance say a researcher x is browsing 
+in the funding section then they open a pool and approve a proposal to fund a certain problem. Then that chain of interactions which will involve minting 
+or spending a utxo(if you've interacted before). These tokens which are located in the researchers page (script address that can only be spent by one 
+pubkeyhash) will keep getting 'morphed' as the transactions happen. E.g one could start with an "open-pool token" that has datum of 1 (no of times this user
+has opened this pool) and then after approving a proposal end up with the same 'open-pool token' (scriptHash) but with a different datum perhaps 1 and the 
+proposal voted on. 
+
+Once we have the thothCore oracle, we'll use it to create the researcher's pages and keep a reference of the partcular researcher in the thothcore oracle 
+so as to enable syncing later, since this thothcore oracle would be used to hold the 'universal state' of Thoth network(the details of how this will work 
+exactly are still getting worked out). Once a researcher(pkh) has an 'oracle' (script address) of their own then they can spend and produce utxos at this 
+script address which will correspond to the activities they have done in the network. To reduce the number of transactions that will be required in any 
+session we'll 'bundle' up the necessary changes so that we're in the end constructing only one transaction (if possible) other alternatives include 
+'contunuation' series of the contract monad (I'm not sure this would work, have to check). or use a single utxo belonging to a researcher that carries different
+tokens that represent the actions the person took while on a session. Aparently according to a blog post on haskellforall,
+you can use this(continuation Monad) to condense the callback API of a framework into a single point of entry.
+
+We can try and model the interaction between researchers as interacting dynamical system and then the overall network as a 'juxtaposition' of the 
+sub-systems(researchers)
+
+What's the largest number of addresses we can store in a datum for a utxo?? When a researcher creates their script address they also leave a reference(Maybe 
+a scriptAddressHash) that corresponds to the researcher which can be used by the same researcher to 'update' the network state. This can be formalized and 
+perhaps even implemented as a lens (optic in general). When researchers interact they also leave each other 'references'.
+
+If we can't store a lot of addresses in a utxo as datum then we need another way to reference all the researchers in the 'global' network state. 
+
+From the front end we'll assemble a JSON representation of all the actions (transitions) we have performed and then use some code to convert it to 
+api calls to the pab which will can be converted to a single call. 
+Now for the maintanance of the state that one can render on a front end, the goal is to keep up with the changes in the researchers pages. So for the 
+DOM we'll have it be created from states of the 'contract' i.e from what the user is interacting with. For instance if a user is looking at the 
+labs 'page' then at the 'backend' they'll be a state data structure that is only 'revealing' the necessary parts of the entire state which would correspond
+to information that is relevant to the labs page, e.g a list of all labs etc etc
+
+The combination of spending, minting and burning e-utxos with different validators (i.e a set of constraints for building a transaction and the lookups the 
+transaction needs) can lead to specification of weird real-world interactions, with the way the Contract is defined as a monad a programmer is encouraged
+to think of interesting solutions to the constraints of the system they are writing programs for. Constraints lead to novel 'properties' (e.g evolution of 
+organisms on earth) ... P.s This could be a blog-post (Just a rant about plutus, cardano and haskell(Maybe some C.T too))
+
+-- On a cool tangent, we can have people mint 'park' tokens only when they have 'spend' some 'effort' tokens. An analog to this in a money system where 
+there is money available to be minted (but with a limiting fn) so in our case the fn is checking some parameters such as supply, flux, easing coeff, etc 
+Put another way, the more effort you've put, the more you can mint and hence 'expand' your interface. But even with no effort one can mint but only 
+limitedly
+
+The thothCore will grow its number of utxos over time, so they'll be a lot of value locked in the address(es). We can use this value as a fund to make 
+some operations in the network cheaper (already paid for, this will probably include minting transactions which deposit the token in the script address).
+But the question of how many utxos can we store in a single script address. If it is limiting we might have to think of a way to have the same effect 
+without using one script address (and idea is to have one main "routing" script address which contains the scriptHashes of other script address where 
+we can spend or mint tokens from/to ) 
+-- This implies a way to do dynamics of utility, sacrifice etc, so 'early' network adopters will benefit from being able to mint a lot but they 
+pay alot also since the pools don't have stray ada utxos to reduce cost of certain transactions, but the late network users wont be able to mint a lot 
+but a lot of the transactions they would want to do are essentially free. That's one way of going around the minAda problem.(encouraging free usage)
+
+
+A scheme would work to determine how many people get to freely live at a given moment (i,e free transactions) depending on some network statistics.
+
+It just occured to us that instead of using datum to drive UI we can use transaction metadata for the utxos that we have at any given time.
+So pressing on some buttons simply changes the state of the UI and new components are rendered. 

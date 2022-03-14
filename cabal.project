@@ -60,19 +60,18 @@ package cardano-wallet-core-integration
 source-repository-package
   type: git
   location: https://github.com/input-output-hk/plutus-apps.git
-  tag: 6aff97d596ac9d59460aab5c65627b1c8c0a1528
+  tag: 41149926c108c71831cfe8d244c83b0ee4bf5c8a
   subdir:
     freer-extras
     playground-common
     plutus-chain-index-core
     plutus-chain-index
-    plutus-contract
-    plutus-ledger
     plutus-use-cases
     plutus-pab
+    plutus-contract
+    plutus-ledger
     plutus-ledger-constraints
     quickcheck-dynamic
-
 
 -- Copied from plutus-core
 source-repository-package
@@ -217,10 +216,12 @@ source-repository-package
     eras/shelley/chain-and-ledger/executable-spec
     eras/shelley/test-suite
     shelley/chain-and-ledger/shelley-spec-ledger-test
+    libs/cardano-ledger-core
+    libs/cardano-ledger-pretty
+    libs/cardano-protocol-tpraos
     libs/non-integral
     libs/small-steps
-    libs/cardano-ledger-pretty
-    semantics/small-steps-test
+    libs/small-steps-test
 
 source-repository-package
   type: git
