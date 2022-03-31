@@ -12,7 +12,7 @@
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module ThothMain.ThothCore
+module ThothCore.ThothCoreOne
     ( tokenPolicy
     , tokenCurSymbol
     , mintThothToken

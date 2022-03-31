@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module ThothMain.ThothPAB
+module ThothCore.ThothPAB
     ( Address
     , TokenContract (..)
     ) where
@@ -16,7 +16,7 @@ import           Plutus.PAB.Effects.Contract.Builtin (Empty, HasDefinitions (..)
 import           Prettyprinter                       (Pretty (..), viaShow)
 import           Wallet.Emulator.Wallet              (knownWallet, mockWalletAddress)
 
-import           ThothMain.ThothCore                 as Token
+import           ThothCore.ThothCoreOne              as Token
 
 
 data TokenContract = Mint Token.TokenParams
