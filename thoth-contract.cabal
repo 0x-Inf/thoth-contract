@@ -51,8 +51,8 @@ library
       NFT
       Lib
       Utils
-      ThothMain.ThothCore
-      ThothMain.ThothPAB
+      ThothCore.ThothNetworkCore
+      ThothCore.ThothPAB
   hs-source-dirs:
       src
   build-depends:

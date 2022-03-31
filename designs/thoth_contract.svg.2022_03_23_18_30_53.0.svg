@@ -24,9 +24,9 @@
      inkscape:document-units="mm"
      showgrid="false"
      showborder="false"
-     inkscape:zoom="0.29801371"
-     inkscape:cx="4546.7706"
-     inkscape:cy="1615.6975"
+     inkscape:zoom="0.25603214"
+     inkscape:cx="1511.529"
+     inkscape:cy="24678.543"
      inkscape:window-width="1862"
      inkscape:window-height="1016"
      inkscape:window-x="58"
@@ -2049,6 +2049,22 @@
          id="path82765-8" />
     </g>
     <g
+       id="g18911-3"
+       transform="translate(768.15456,-531.19695)">
+      <circle
+         style="fill:none;stroke:#000000;stroke-width:1.32292;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="circle82811-8"
+         cx="1322.5408"
+         cy="428.81186"
+         r="25.107473" />
+      <circle
+         style="fill:#f13c11;fill-opacity:0.977279;stroke:#000000;stroke-width:1.05833;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         id="circle82813-0"
+         cx="1322.5408"
+         cy="428.81186"
+         r="7.5806537" />
+    </g>
+    <g
        id="g18907">
       <circle
          style="fill:none;stroke:#000000;stroke-width:1.32292;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -2272,14 +2288,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12.3472px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-       x="-487.17172"
+       x="-488.69077"
        y="1568.7404"
        id="text120330"
        transform="rotate(-90)"><tspan
          sodipodi:role="line"
-         id="tspan4401"
-         x="-487.17172"
-         y="1568.7404">Thoth Fellowships</tspan></text>
+         id="tspan121598"
+         x="-488.69077"
+         y="1568.7404">Thoth Experiments</tspan></text>
     <g
        id="g120336"
        transform="translate(1442.2319,-14.485242)">
@@ -4060,7 +4076,7 @@
          id="path54606" />
     </g>
     <rect
-       style="fill:none;stroke:#000000;stroke-width:1.05833;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;stroke:#00aa88;stroke-width:1.05833;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
        id="rect54610"
        width="12.69039"
        height="53.717396"
@@ -7041,24 +7057,5 @@
          style="stroke-width:0.264583"
          x="-812.0755"
          y="7657.9077">This will contain also the effort and content context if the user wishes to do view it. </tspan></text>
-    <g
-       id="g4381">
-      <g
-         id="g18911-3"
-         transform="translate(768.15456,-531.19695)">
-        <circle
-           style="fill:none;stroke:#000000;stroke-width:1.32292;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-           id="circle82811-8"
-           cx="1322.5408"
-           cy="428.81186"
-           r="25.107473" />
-      </g>
-      <circle
-         style="fill:#9ee21b;fill-opacity:1;stroke:#000000;stroke-width:1.05833;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         id="circle114644-7"
-         cx="2090.6953"
-         cy="-102.38509"
-         r="7.5806537" />
-    </g>
   </g>
 </svg>

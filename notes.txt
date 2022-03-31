@@ -130,7 +130,38 @@ pay alot also since the pools don't have stray ada utxos to reduce cost of certa
 but a lot of the transactions they would want to do are essentially free. That's one way of going around the minAda problem.(encouraging free usage)
 
 
-A scheme would work to determine how many people get to freely live at a given moment (i,e free transactions) depending on some network statistics.
+A scheme would work to determine how many people get to freely 'live' at a given moment (i,e free transactions) depending on some network statistics.
 
 It just occured to us that instead of using datum to drive UI we can use transaction metadata for the utxos that we have at any given time.
 So pressing on some buttons simply changes the state of the UI and new components are rendered. 
+
+There are two states that are of relevance to the working of the network
+ - 1. The Local Researcher state. This is the script address (state machine) that contains the utxos and associated datums of researcher, It can 
+      be updated by the researcher or other researchers or the thoth network address. The researcher can both spend and produce Utxos at this address,
+      this could correspond to operations such as creating a notebook, a blog post, a thought, attending a court session, request funding, join conversation,
+      vote for ... , add page section, add page tags etc etc, Another researcher can produce utxos at this address also, this could be to accomplish 
+      p2p operations such as, give creditation, read note, read blog, propose an edit etc etc. The Network address(es) can also interact with the 
+      address of a researcher. This could be to produce effort tokens in the researcher's address... (We're not sure if there's going to be a 
+      network address at this time, because we could easy use the juxtaposition of the researcher's pages.. this would make the platform 'more decentralized')
+
+   2. The global state. This will be the amalgamation of all the information in the individual researcher's pages (para script addresses). This 
+      will probably be done by some rs since it will involve making a lot of requests and appatently Rust is good at that sort of thing. 
+      The global state will the defacto thoth network and this is what most people (researchers or not) will be interacting with.
+
+(from code)-- some attempt to make thoth network datum
+-- an idea is to have each researcher page have this every time they change stuff
+-- another idea is to have a global one which is updated by the researchers who wish for their changes to be refrected(this will inolved producing utxo at the network script address)
+-- The idea of having this global state of the thoth network is orthorgonal to Cardano's accounting model i.e having a central global state is discouraged 
+   by design.
+
+We should find a way to simulate a 'global-state' by utilizing the researcher's independent script addresses locking some utxos representing thier activities. 
+
+
+The contributions argument
+  -- The thoth network is like a 'organization' of contributions which is made up of other 'oragnizations' of contributions of various researchers 
+     and their organizations are made up of various contruibutions some 'singular' and others organizations as wel. This stuff will work in the fashion
+     of operads where certain coherence conditions must be satisfied
+
+
+On Thoth Network Redeemer 
+ -- Can multiple pkhs be signatories to the transaction that initializes the network??

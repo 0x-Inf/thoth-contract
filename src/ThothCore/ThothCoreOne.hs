@@ -51,11 +51,16 @@ import           Text.Printf                 (printf)
 import           Utils                       (getCredentials, unsafeTokenNameToHex)
 
 
--- TODO: make the validator and policy for initializing the network
+-- make the validator and policy for initializing thoth network
 
+-- a sample of what the datum of the network(address containing multiple utxos) might be
+data ThothNetwork = ThothNetwork 
+    { thothNetworkResearchers    :: ![PaymentPubKeyHash]
+    , thothNetworkLastSync       :: !POSIXTime
+    , thothNetworkAddress        :: !Address
+    } deriving (Show, Generic, FromJSON, ToJSON, Prelude.Eq, Prelude.Ord, OpenApi.ToSchema)
 
-
-
+-- The token policy for minting a thoth Token(Refine this)
 {-# INLINABLE mkTokenPolicy #-}
 mkTokenPolicy :: TxOutRef -> TokenName -> Integer -> () -> ScriptContext -> Bool 
 mkTokenPolicy oref tn amt () ctx = traceIfFalse "UTxo not consumed" hasUTxo             &&
