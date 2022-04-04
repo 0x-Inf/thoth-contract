@@ -111,6 +111,20 @@ getCredentials (Plutus.Address x y) = case x of
                 ScriptCredential _    -> Nothing
                 PubKeyCredential pkh' -> Just (ppkh, Just $ Plutus.StakePubKeyHash pkh')
 
+-- getScriptCredentials :: Plutus.Address -> Maybe (Plutus.PaymentPubKeyHash, Maybe Plutus.StakePubKeyHash)
+-- getScriptCredentials (Plutus.Address x y) = case x of
+--     PubKeyCredential _   -> Nothing
+--     ScriptCredential valh ->
+--       let
+--         ppkh = Plutus.PaymentPubKeyHash pkh
+--       in
+--         case y of
+--             Nothing                        -> Just (ppkh, Nothing)
+--             Just (Plutus.StakingPtr _ _ _) -> Nothing
+--             Just (StakingHash h)           -> case h of
+--                 ScriptCredential _    -> Nothing
+--                 PubKeyCredential pkh' -> Just (ppkh, Just $ Plutus.StakePubKeyHash pkh')              
+
 unsafePaymentPubKeyHash :: Plutus.Address -> Plutus.PaymentPubKeyHash
 unsafePaymentPubKeyHash addr = maybe (error $ "script address " ++ show addr ++ " does not contain a payment key") fst $ getCredentials addr
 

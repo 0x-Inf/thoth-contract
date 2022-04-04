@@ -48,11 +48,12 @@ source-repository head
 
 library
   exposed-modules:
-      NFT
-      Lib
-      Utils
-      ThothCore.ThothNetworkCore
-      ThothCore.ThothPAB
+        NFT
+      , Lib
+      , Utils
+      , ThothCore.ThothNetworkCore
+      , ThothCore.ThothPAB
+      , Plutus.Contract.Test.Coverage.ReportCoverage
   hs-source-dirs:
       src
   build-depends:
@@ -74,7 +75,11 @@ library
       , lens
       , serialise
       , prettyprinter
+      , html-entities
+      , tasty
+      , tasty-hunit
       , playground-common
+      , plutus-core
       , plutus-contract
       , plutus-tx-plugin
       , plutus-tx
@@ -145,19 +150,26 @@ test-suite thoth-contract-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_thoth_contract
+        Paths_thoth_contract
+      , ThothTestSpec.ThothNetworkCoreTest
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.9 && <5
-    , thoth-contract,
-    tasty -any,
-    tasty-hunit -any,
-    tasty-hedgehog >=0.2.0.0
-  build-depends: 
-    plutus-tx -any,
-    plutus-tx-plugin,
-    plutus-contract -any,
-    plutus-ledger -any,
   default-language: Haskell2010
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+  build-depends:
+      base ^>=4.14.1.0
+    , containers
+    , data-default
+    , freer-extras
+    , lens
+    , plutus-contract
+    , plutus-ledger
+    , thoth-contract
+    , plutus-tx
+    , QuickCheck
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , text
+if !(impl(ghcjs) || os(ghcjs))
+  build-depends: plutus-tx-plugin -any

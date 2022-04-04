@@ -165,3 +165,12 @@ The contributions argument
 
 On Thoth Network Redeemer 
  -- Can multiple pkhs be signatories to the transaction that initializes the network??
+
+
+- Development notes: April 4th 2022:
+-- Made the validation fn for activating and initializing the 'network' address. Will need to update it to cover more.... 
+-- Some Maybe issues include the supposed appearance of two separate scripts, maybe this is because of parametrization or a bug in the emulator...
+-- Testing scafolding seems to work except coverage... also need to include more tests for the validators and off-chain code done today
+-- On reading a blog post about scalability, there seems to be already existing patterns to deal with the concurrency issue of the Utxo based blockchain,
+   we might adapt some or design ones if our use cases require it.
+-- Make a more 'comprehensive' minting policy for the main Thoth Token 

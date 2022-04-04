@@ -43,5 +43,3 @@ We're now going to look at the particulars for the redeemer.
 | `MorphNetworkParameters` | `PaymentPubKeyHash` $\times$ `ScriptContext` $\times$ `MorphProposal` $\times$ `NetworkDatum` | <ul><li> check that the proposal has the number of votes required to change a parameter </li><li> Check that the pkh is the stated executor of proposal</li><li>Check that the outgoing utxo has the datum express the changes </li><li>Check that incoming outputs have datum</li><li> Mark the proposal as done (It might have been a state machine and this will 'close it')</li><li>Items</li></ul>| This action of the network will have to be ratified by all people who want to have a say and hence it has to be accompanied by a proposal that has been agreed on. The checks ensures that this happens and that the changes are now part of the new state of the network |
 
 Now that we have an idea of the how the redeemer would influence what transactions are true or not. We can have a look at the fn that will make all that possible, here is a list of them with a short description and it's type signature.
-
-- check_ownInput: 
