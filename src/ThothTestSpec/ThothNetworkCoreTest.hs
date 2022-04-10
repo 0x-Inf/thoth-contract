@@ -94,6 +94,9 @@ networkAssetSymbol = "ff"
 networkAssetToken :: TokenName
 networkAssetToken = "THOTH"
 
+initNetworkAssetTokenName :: TokenName
+initNetworkAssetTokenName = "Init Me"
+
 initNetworkParams :: BuiltinByteString
 initNetworkParams = "Thoth one"
 
@@ -102,16 +105,19 @@ networkInitTrace :: EmulatorTrace ()
 networkInitTrace = do 
     let w1 = knownWallet 1
         addr = mockWalletAddress w1
-        sacrificeAmount        = 15_000_000
-        networkTokenInitSupply = 100_000_000_000_000_000_000
+        tributeAmount        = 15_000_000
+        networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit'
+        initDeadline = slotToEndPOSIXTime def 10
+        initTokenAmount = 8
+
 
     let nip = NetworkInitParams 
                 { rZeroAddress              = addr
                 , initialNetworkParams      = show initNetworkParams
-                , networkSacrificeAmount    = sacrificeAmount
-                , networkTokenName1          = networkAssetToken
-                , networkTokenInitialSupply1 = networkTokenInitSupply
-                , networkActiveDatum1        = initNetworkParams
+                , networkTributeAmount      = tributeAmount
+                , initNetworkTokenName      = initNetworkAssetTokenName
+                , initNetworkDeadline       = initDeadline
+                , initNetworkTokenAmount    = initTokenAmount
                 }
 
     let nap = NetworkActivateParams

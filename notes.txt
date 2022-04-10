@@ -173,4 +173,46 @@ On Thoth Network Redeemer
 -- Testing scafolding seems to work except coverage... also need to include more tests for the validators and off-chain code done today
 -- On reading a blog post about scalability, there seems to be already existing patterns to deal with the concurrency issue of the Utxo based blockchain,
    we might adapt some or design ones if our use cases require it.
--- Make a more 'comprehensive' minting policy for the main Thoth Token 
+-- Make a more 'comprehensive' minting policy for the main Thoth Token.
+
+
+We need to find a way to send tokens to a pkh the current owner directly or indirectly controls i,e they can spend tokens from. 
+
+The 'essence' is creating and propagating knowledge. All the 'features' are interfaces of trying to accomplish that end. 
+
+concurrency is both in the 'network' level and also at the 'researcher' level. 
+
+
+- Development notes: April 9-10th 2022:
+ -- Made a revamp of the network initialization procedure (i.e the validator datum and redeemer combinations). This includes now a spawn phase which is 
+    essentially the first transaction that involves the network script address. This process should (at the time of writing the minting wasn't really working)
+    also mint some spawn tokens and given them to the spawner and also some to the script 
+ -- ALso we need a scheme for deriving assetclasses from already existing ones so as to start creating a 'trail' of tokens so as to record activity. 
+    This could also be used with some datum for some tokens in the script address so as to 'consider' more information. 
+ -- Start thinking of ways to prevent pkhs to willy nilly intialize other networks, only make it so that the network can be initialized only once. (probably
+    would involve the validator... obviosly)
+ -- Since we need to record 'new knowledge' and also the 'propagation' of it, in these initialization step we consider having a universal 'Effort/knowledge' 
+    token which is sent to contributing addresses after they have changed the state of the 'network' validator.
+ -- Think more on the concurrency 'hack' especially as we draw closer to implimenting initResearcher redeemer and the transaction involved. 
+ -- So far we haven't included a good datum 'strategy' to help mantain the state of the network validator. 
+ -- Implement all the validator checks properly and start writing tests and 'rogue off-chain' code to check whether they can be broken or mishandled. Considering 
+    the network script address will likely hold a lot of value in terms of the native 'computational token' and also the knowledge and effort value tokens, we
+    need to ensure that absolutely only authorized spends are allowed, while also ensuring that the network remains scalable. 
+ -- Find a good split of the off-chain code for the series of transactions that lead to the network being fully active. i.e does the spawn and init need to be 
+    in the same off-chain action. 
+ -- Keep in mind how the off-chain part would be interacting with the front facing part of the 'platform'
+ -- There was an error and also hafly implemented fns that need to be reworked and as always optimization when we stopped coding on 10 th. 
+ -- The validator is starting to look huge and we've only done two transitions, think of other ways to get the same functionality using Maybe different network 
+    Validators for different 'classes' of acitivity, or a good set of checks that gives the same gurantees but with fewer computations 
+ -- Remember memory and compute are factors when dealing with the validator, we should aim to make it as optimized as possible. 
+ -- We need to put some thought into the minting policies of the tokens involved in the initialization process. The current implementation only contains some 
+    simple rules, which are not particularly informative about what the network is trying to achieve.
+
+
+
+Some mathematical notions: 
+  -- We need to show how the network essentially grows and ensures that the contributions made by people interacting with it are 'represented' in the networks 
+     state. Some ideas would be using operads as mentioned above especially in conjuction with poly dynamical systems.. 
+  -- Just to mention Poly would provide a good formalization of our network and help us reason about the scale and concurrency properties of it. This together 
+     with the E-Utxo model which gives us certain guarantees about the transactions and how they affect each other will greatly help with checking primary 
+     'computational (correctness etc etc)' of our network and how it operates.  

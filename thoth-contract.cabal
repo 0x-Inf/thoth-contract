@@ -48,12 +48,12 @@ source-repository head
 
 library
   exposed-modules:
-        NFT
-      , Lib
-      , Utils
-      , ThothCore.ThothNetworkCore
-      , ThothCore.ThothPAB
-      , Plutus.Contract.Test.Coverage.ReportCoverage
+      NFT
+      Lib
+      Utils
+      ThothCore.ThothNetworkCore
+      ThothCore.ThothPAB
+      Plutus.Contract.Test.Coverage.ReportCoverage
   hs-source-dirs:
       src
   build-depends:
