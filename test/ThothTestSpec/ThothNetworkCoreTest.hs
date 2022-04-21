@@ -73,7 +73,12 @@ myOptions = defaultCheckOptions & emulatorConfig .~ emCfg
 
 myPredicate :: TracePredicate 
 myPredicate = 
-    walletFundsChange w1 (Ada.lovelaceValueOf (-10_000_000))
+    walletFundsChange w1 (Ada.lovelaceValueOf (-15_000_000))
+--     walletFundsChange w1 (assetClassValue initToken   5))
+--     -- valueAtAddress scripAddress (\v -> if v `geq` Ada.lovelaceValueOf (-15_000_000))
+--   where 
+--       initToken :: AssetClass 
+--       initToken = AssetClass (currency, conjureNetworkAssetTokenName)
 
 
 emCfg :: EmulatorConfig
@@ -94,8 +99,8 @@ networkAssetSymbol = "ff"
 networkAssetToken :: TokenName
 networkAssetToken = "THOTH"
 
-initNetworkAssetTokenName :: TokenName
-initNetworkAssetTokenName = "Init Me"
+conjureNetworkAssetTokenName :: TokenName
+conjureNetworkAssetTokenName = "Conjure Thoth"
 
 initNetworkParams :: BuiltinByteString
 initNetworkParams = "Thoth one"
@@ -106,18 +111,16 @@ networkInitTrace = do
     let w1 = knownWallet 1
         addr = mockWalletAddress w1
         tributeAmount        = 15_000_000
-        networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit'
+        networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit' in the off-chain code
         initDeadline = slotToEndPOSIXTime def 10
         initTokenAmount = 8
 
 
-    let nip = NetworkInitParams 
-                { rZeroAddress              = addr
-                , initialNetworkParams      = show initNetworkParams
-                , networkTributeAmount      = tributeAmount
-                , initNetworkTokenName      = initNetworkAssetTokenName
-                , initNetworkDeadline       = initDeadline
-                , initNetworkTokenAmount    = initTokenAmount
+    let nip = ConjureNetworkParams 
+                { conjuringResearcherAddress   = addr
+                , conjureNetworkTributeAmount  = tributeAmount
+                , conjureNetworkTokenName      = conjureNetworkAssetTokenName
+                , conjureNetworkDeadline       = initDeadline
                 }
 
     let nap = NetworkActivateParams
@@ -130,8 +133,8 @@ networkInitTrace = do
     h1 <- activateContractWallet w1 endpoints
     h2 <- activateContractWallet w1 endpoints
     
-    callEndpoint @"init" h1 nip
-    void $ Emulator.waitNSlots 6
+    callEndpoint @"conjure" h1 nip
+    void $ Emulator.waitNSlots 10
 
     -- callEndpoint @"activate" h1 nap 
     -- void $ Emulator.waitNSlots 3

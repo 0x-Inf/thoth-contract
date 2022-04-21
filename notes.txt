@@ -216,3 +216,25 @@ Some mathematical notions:
   -- Just to mention Poly would provide a good formalization of our network and help us reason about the scale and concurrency properties of it. This together 
      with the E-Utxo model which gives us certain guarantees about the transactions and how they affect each other will greatly help with checking primary 
      'computational (correctness etc etc)' of our network and how it operates.  
+
+
+
+-- development notes for 15 Apr 2022 (written the next day)
+ - The network attributes are now part of the datum of the network script address, this might prove to be a good idea or not; only 'time'(more development)
+   will tell 
+ - The conjure and spawn actions of the network state have provided a good way to model reward of the said actions; this might be modelled differently for 
+   other interaction interfaces 
+ - Attempts at setting up a private test net we're not successfully completed; 
+ - An idea of implementing the network datum as a lens (or optic) is still brewing, this is especially useful as the state would be changing with most of 
+   the interactions, especially when multiple researchers begin to interact with the network.
+ - The testing work-flow has been set up and works as intented; the tests included so far are non-sensical. 
+ - A problem with the testing suite that we have is that we haven't figure out yet how to test for the tokens we are minting that have non-trivial symbols.
+   Think about this some more 
+ - The validator checks for the spawn action should be enhanced to prevent haphazard spawning of the network i.e only two entities should have the spawn and 
+   conjure tokesn (networkScript and researcherZero). 
+ - Think about other validator checks for the rest of the initialization process. Further, consider whether it is benficial to only have one true network or 
+   multiple 'networks' that may in aggregate be seen as 'one' or Maybe seen as entirely different networks. 
+ - Something else that constantly came up is whether the Contract monad for the off-chain part should return anything or making use of the writer part of the 
+   monad to expose information about consequences of actions to the outside world. Think about potential benefits of this and what kind of information we should 
+   return. And also with benefits there are always potential problems so think on those too. 
+ - Start thinking more on the interface the off-chain provides and how it shapes how knowledge is created and propagated. 

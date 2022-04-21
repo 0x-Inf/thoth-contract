@@ -48,12 +48,10 @@ source-repository head
 
 library
   exposed-modules:
-      NFT
-      Lib
-      Utils
-      ThothCore.ThothNetworkCore
-      ThothCore.ThothPAB
-      Plutus.Contract.Test.Coverage.ReportCoverage
+        Utils
+      , ThothCore.ThothNetworkCore
+      , ThothCore.ThothPAB
+      , Plutus.Contract.Test.Coverage.ReportCoverage
   hs-source-dirs:
       src
   build-depends:
@@ -150,8 +148,7 @@ test-suite thoth-contract-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-        Paths_thoth_contract
-      , ThothTestSpec.ThothNetworkCoreTest
+        ThothTestSpec.ThothNetworkCoreTest
   hs-source-dirs:
       test
   default-language: Haskell2010
