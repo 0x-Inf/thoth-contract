@@ -238,3 +238,15 @@ Some mathematical notions:
    monad to expose information about consequences of actions to the outside world. Think about potential benefits of this and what kind of information we should 
    return. And also with benefits there are always potential problems so think on those too. 
  - Start thinking more on the interface the off-chain provides and how it shapes how knowledge is created and propagated. 
+
+
+-- development notes for 21-22 Apr 2022 
+ - The activate network off-chain compiles 
+ - We still haven't figured a way to pass on the scriptAddress and spawn token to other contract using the return;
+ - Using writer for the above seems like a trivial next option but we really wanted to do it with return 
+ - The checks for the validator of the network haven't still been implemented properly 
+ - We still haven't figured more 'restrictive' checks
+ - We also need to figure out proper returns formulas for contributing to the initialization of the network; this means that the token minting 
+   policies need to reflect these returns and also the validator checks 
+ - The testing suite is still not comprehensive for the mints 
+ - We noticed that we could add more lookups to make spending from the script even more secure, of course this will go hand in hand with the validator. 

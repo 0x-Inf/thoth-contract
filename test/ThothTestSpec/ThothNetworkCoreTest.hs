@@ -102,6 +102,9 @@ networkAssetToken = "THOTH"
 conjureNetworkAssetTokenName :: TokenName
 conjureNetworkAssetTokenName = "Conjure Thoth"
 
+initializeNetworkAssetTokenName :: TokenName
+initializeNetworkAssetTokenName = "Initialize Thoth"
+
 initNetworkParams :: BuiltinByteString
 initNetworkParams = "Thoth one"
 
@@ -123,19 +126,23 @@ networkInitTrace = do
                 , conjureNetworkDeadline       = initDeadline
                 }
 
-    let nap = NetworkActivateParams
-                { networkTokenName          = networkAssetToken
-                , networkTokenInitialSupply = networkTokenInitSupply
-                , networkActiveDatum        = initNetworkParams
-                , rZeroActivateAddress      = addr
-                }
-
     h1 <- activateContractWallet w1 endpoints
-    h2 <- activateContractWallet w1 endpoints
     
     callEndpoint @"conjure" h1 nip
     void $ Emulator.waitNSlots 10
 
+
+    let initTokenInitSupply = 2
+        
+
+    -- TODO: find a way to get the script address and the spawn token
+    let nap = NetworkActivateParams
+                { initializeNetworkTokenName          = initializeNetworkAssetTokenName
+                , initializeNetworkTokenInitialSupply = initTokenInitSupply
+                , spawnNetworkAccessToken             = initNetworkParams
+                , networkScriptAddress                = scriptAddress 
+                , rZeroActivateAddress                = addr
+                }
     -- callEndpoint @"activate" h1 nap 
     -- void $ Emulator.waitNSlots 3
 
