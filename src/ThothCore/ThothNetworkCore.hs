@@ -13,11 +13,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ThothCore.ThothNetworkCore
-    ( initializeThothNetwork
-    , endpoints
+    ( conjureThothNetwork
+    , initEndpoint
+    , conjEndpoint
     , networkCovIdx
     , ConjureNetworkParams (..)
-    , NetworkActivateParams (..)
+    , NetworkInitializeParams (..)
     ) where
 
 import           Control.Monad               hiding (fmap)
@@ -37,6 +38,7 @@ import           Plutus.Contract             as Contract
 import           Plutus.Contract.Wallet      (getUnspentOutput)
 import           Plutus.Contracts.Currency   as Currency
 import qualified PlutusTx
+import qualified PlutusTx.AssocMap           as AssocMap
 import           PlutusTx.Code               (getCovIdx)
 import           PlutusTx.Coverage           (CoverageIndex)
 import           PlutusTx.Prelude            hiding (Semigroup(..), unless)
@@ -232,14 +234,65 @@ networkInitializeTokenPolicy addr nattr roref storef tn amt = mkMintingPolicyScr
 networkInitializeTokenCurSym :: Address -> NetworkAttrbutes -> ResearcherTxOutRef -> SpawnTokenTxOutRef -> TokenName -> Integer -> CurrencySymbol
 networkInitializeTokenCurSym addr nattr roref storef tn = scriptCurrencySymbol . networkInitializeTokenPolicy addr nattr roref storef tn
 
+type InitTokenTxOutRef = TxOutRef
+
+{-# INLINABLE mkNetworkActivateTokenPolicy #-}
+-- | The validator for the initialize network token 
+mkNetworkActivateTokenPolicy :: Address -> NetworkAttrbutes -> ResearcherTxOutRef -> InitTokenTxOutRef -> TokenName -> Integer -> () -> ScriptContext -> Bool 
+mkNetworkActivateTokenPolicy rAddr nattr rAdaToref initOref tn amt () ctx = 
+    traceIfFalse "Researcher Utxo not consumed" hasResearcherUtxo              &&
+    traceIfFalse "wrong amount minted" checkMintedAmount                       &&
+    traceIfFalse "Not signed by researcher zero" checkRZeroSignature           && 
+    traceIfFalse "Check spawn token " checkActivateToken
+  where 
+      info :: TxInfo 
+      info = scriptContextTxInfo ctx 
+
+      hasResearcherUtxo :: Bool 
+      hasResearcherUtxo = any (\i -> txInInfoOutRef i == rAdaToref) $ txInfoInputs info
+
+      checkMintedAmount :: Bool 
+      checkMintedAmount = case flattenValue (txInfoMint info) of
+                                 [(_, tn', amt')] -> tn' == tn && amt' == amt 
+                                 _                -> False
+
+      checkRZeroSignature :: Bool 
+      checkRZeroSignature = case toPubKeyHash (_researcherZeroAddress nattr) of 
+                                 Nothing  -> False 
+                                 Just pkh -> txSignedBy info pkh && rAddr == (_researcherZeroAddress nattr)
+
+      checkActivateToken :: Bool
+      checkActivateToken = True     
+
+networkActivateTokenPolicy :: Address -> NetworkAttrbutes -> ResearcherTxOutRef -> InitTokenTxOutRef -> TokenName -> Integer -> Scripts.MintingPolicy 
+networkActivateTokenPolicy rAddr nattr rAdaToref initOref tn amt = mkMintingPolicyScript $ 
+    $$(PlutusTx.compile [|| \addr' nattr' roref' initOref' tn' amt' ->  Scripts.wrapMintingPolicy $ mkNetworkActivateTokenPolicy addr' nattr' roref' initOref' tn' amt' ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode rAddr
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode nattr
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode rAdaToref
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode initOref
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode tn
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode amt
+
+
+networkActivateTokenCurSym :: Address -> NetworkAttrbutes -> ResearcherTxOutRef -> InitTokenTxOutRef -> TokenName -> Integer -> CurrencySymbol
+networkActivateTokenCurSym rAddr nattr rAdaToref initOref tn = scriptCurrencySymbol . networkActivateTokenPolicy rAddr nattr rAdaToref initOref tn
+
 data NetworkAttrbutes = NetworkAttrbutes
-    { _researcherZeroAddress       :: Address
+    { _researcherZeroAddress             :: Address
     , _thothNetworkScriptAddresss        :: Address 
-    , _conjureNetworkToken         :: AssetClass
-    , _conjureTributeAmount        :: Integer
-    , _spawnNetworkToken           :: Maybe AssetClass
-    , _initializeThothNetworkToken :: Maybe AssetClass  
-    , _activateThothNetworkToken   :: Maybe AssetClass 
+    , _conjureNetworkToken               :: AssetClass
+    , _conjureTributeAmount              :: Integer
+    , _spawnNetworkToken                 :: Maybe AssetClass
+    , _initializeThothNetworkToken       :: Maybe AssetClass  
+    , _activateThothNetworkToken         :: Maybe AssetClass
+    , _activateThothNetworkTokenAmount   :: Maybe Integer 
     } deriving Show
 
 makeLenses ''NetworkAttrbutes    
@@ -251,7 +304,7 @@ PlutusTx.unstableMakeIsData ''NetworkAttrbutes
 -- | the datum state data type
 data DatumStateData = DatumStateData
     { researcherPaymentPubKeyHash   :: [PubKeyHash]
-    , datumNetworkAddress          :: Address 
+    , datumNetworkAddress           :: Address 
     , networkParams                 :: String
     } deriving (Show, Generic, FromJSON, ToJSON, Prelude.Eq, Prelude.Ord, OpenApi.ToSchema, PlutusTx.UnsafeFromData, PlutusTx.FromData, 
                 PlutusTx.ToData)
@@ -259,22 +312,27 @@ data DatumStateData = DatumStateData
 -- PlutusTx.unstableMakeIsData ''DatumStateData
 
 -- | The datum of the network contained in the utxos at script address 
-data NetworkDatum = Dead NetworkAttrbutes | Spawned NetworkAttrbutes | Initialized NetworkAttrbutes | Active BuiltinByteString  
+data NetworkDatum = Dead NetworkAttrbutes | Spawned NetworkAttrbutes | Initialized NetworkAttrbutes | Active NetworkAttrbutes  
     deriving Show
 
 PlutusTx.unstableMakeIsData ''NetworkDatum
 
+{-# INLINABLE networkDatum #-}
+networkDatum :: Maybe Datum -> Maybe NetworkDatum 
+networkDatum d = do  
+    Datum d  <- d 
+    PlutusTx.fromBuiltinData d
+
 -- | The network update interactions
 data NetworkRedeemer = Spawn (PubKeyHash, AssetClass) 
                      | InitializeNetwork (PubKeyHash, AssetClass) 
-                     | ActivateNetwork (PubKeyHash, Integer, AssetClass) 
+                     | ActivateNetwork (PubKeyHash, AssetClass) 
                      | InitializeReseacher (PubKeyHash, AssetClass, Integer)
                      | InitGuest 
                      | MorphNetwork
     deriving Show 
 
 PlutusTx.unstableMakeIsData ''NetworkRedeemer
-
 
 {-# INLINABLE mkNetworkValidator #-}
 -- | The network on chain Validator
@@ -292,13 +350,13 @@ mkNetworkValidator r0addr d r ctx =
             traceIfFalse "Datum Not updated with Network attr"      checkDataInOutDatum 
         (Spawned attr, InitializeNetwork (pkh, thothInitToken))          -> 
             traceIfFalse "Not signed by the valid pubkeyhash"                (txSignedBy info pkh)                                             &&
-            traceIfFalse "Spawn token not in input"                          checkSpawnTokenInInput                                                 &&
+            traceIfFalse "Spawn token not in input"                          (checkSpawnTokenInInput attr)                                     &&
             traceIfFalse "Init Token is send to script"                      (checkInitTokenInScript thothInitToken)                           &&
-            traceIfFalse "Init Token hasn't been transfered to researcher"   (initTokenToInitResearcher r0addr $ _conjureNetworkToken attr )         &&
+            traceIfFalse "Init Token hasn't been transfered to researcher"   (initTokenToInitResearcher attr thothInitToken)                   &&
             traceIfFalse "Datum not updated after network initialization"    checkDatumForInitializationUpdate
-        (Initialized attr, ActivateNetwork (pkh, tribute, effortToken))                   -> 
+        (Initialized attr, ActivateNetwork (pkh, activateToken))                   -> 
             -- TODO: Change the checks to reflect the action of 
-            traceIfFalse "Not signed by the valid pubkeyhash"         (txSignedBy info pkh)               &&
+            traceIfFalse "Not signed by the valid pubkeyhash"       (txSignedBy info pkh)               &&
             traceIfFalse "There is no output to the current script" tokenOutputToScript                   && 
             traceIfFalse "Check if the datum has been set"          checkIfDatumIsSet                     &&
             traceIfFalse "Output to Researcher zero is missing"     outputsToResearcherZero               && 
@@ -316,7 +374,12 @@ mkNetworkValidator r0addr d r ctx =
             ownInput :: TxOut
             ownInput = case findOwnInput ctx of 
                             Nothing -> traceError "couldn't find an input"
-                            Just i  -> txInInfoResolved i 
+                            Just i  -> txInInfoResolved i
+
+            ownOutput :: TxOut 
+            ownOutput = case getContinuingOutputs ctx of 
+                             [o] -> o 
+                             _   -> traceError "exoected only one game output" 
 
             ownPkhLockedOutputs :: Maybe TxOut
             ownPkhLockedOutputs = case getContinuingOutputs ctx of 
@@ -377,8 +440,8 @@ mkNetworkValidator r0addr d r ctx =
             checkScriptValueAfterTx :: Integer -> Bool 
             checkScriptValueAfterTx tribute = valueLockedBy info (ownHash ctx) `geq` (lovelaceValueOf tribute)   
 
-            initTokenToInitResearcher :: Address -> AssetClass -> Bool 
-            initTokenToInitResearcher rAddr initNToken = assetClassValueOf (valuePaidTo info $ (addressPkh rAddr)) initNToken >= 1 
+            initTokenToInitResearcher :: NetworkAttrbutes -> AssetClass -> Bool 
+            initTokenToInitResearcher attr initNToken = valuePaidTo info (addressPkh (_researcherZeroAddress attr)) `geq` assetClassValue initNToken 1 
 
             checkSpawnTokenInScript :: AssetClass -> Bool 
             checkSpawnTokenInScript spwT = any (\_ -> True) [val `geq` assetClassValue spwT 1 | (dh, val) <- scriptOwnOutputs]
@@ -392,14 +455,36 @@ mkNetworkValidator r0addr d r ctx =
             checkDataInOutDatum :: Bool 
             checkDataInOutDatum = True     
 
+            outputDatumhash :: DatumHash 
+            outputDatumhash = case txOutDatumHash ownOutput of 
+                                Nothing -> traceError "datumHash missing"
+                                Just dh -> dh
+
             checkDatumForInitializationUpdate :: Bool 
-            checkDatumForInitializationUpdate = True 
+            checkDatumForInitializationUpdate = case networkDatum (findDatum outputDatumhash info) of
+                                                     Nothing -> traceError "network datum not found!!"
+                                                     Just d -> case d of
+                                                                    Dead nattr ->   traceError "wrong datum data constructor" 
+                                                                    Spawned nattr  -> traceError "network datum not found!!"
+                                                                    Initialized nattr  -> case _initializeThothNetworkToken nattr of 
+                                                                                               Nothing -> False 
+                                                                                               Just initT -> True 
+                                                                    Active bs         -> traceError "wrong datum data constructor" 
+                                                                    
 
             checkInitInputsToken :: AssetClass -> Bool 
             checkInitInputsToken initNToken = (assetClassValueOf (txOutValue ownInput) initNToken >= 1)   
 
-            checkSpawnTokenInInput :: Bool 
-            checkSpawnTokenInInput = True                          
+            checkSpawnTokenInInput :: NetworkAttrbutes -> Bool 
+            checkSpawnTokenInInput attr = case _spawnNetworkToken attr of 
+                                               Nothing -> traceError "error retrieving network attribute"
+                                               Just spwToken -> any (\_ -> True) [\inp -> (checkCurrencySymbol inp spwToken) | inp <- transactionInputs]
+
+                where 
+                    checkCurrencySymbol :: TxInInfo -> AssetClass -> Bool
+                    checkCurrencySymbol txIn spwT = case AssocMap.lookup (fst $ Value.unAssetClass spwT) (getValue $ txOutValue $ txInInfoResolved txIn) of 
+                                                         Nothing   -> False 
+                                                         Just oMap -> True 
 
 
                 -- utxos <- utxosAt addr'
@@ -493,8 +578,8 @@ data ConjureNetworkParams = ConjureNetworkParams
     } deriving (Show, Generic, FromJSON, ToJSON)
 
 
-initializeThothNetwork :: forall w s. ConjureNetworkParams -> Contract w s Text ()
-initializeThothNetwork cnp = do 
+conjureThothNetwork :: forall w s. ConjureNetworkParams -> Contract (Last (Address, AssetClass)) s Text ()
+conjureThothNetwork cnp = do 
     pkh <- Contract.ownPaymentPubKeyHash
     now <- currentTime 
     let mintInitDealine =  fromMilliSeconds $ (DiffMilliSeconds ((getPOSIXTime now) + (10 * 1000 * 60)))
@@ -516,21 +601,22 @@ initializeThothNetwork cnp = do
                     scriptAddress = networkAddress addr
                     valHash       = validatorHash $ networkValidator addr
                 let nattr = NetworkAttrbutes 
-                        { _researcherZeroAddress       = addr
-                        , _thothNetworkScriptAddresss  = scriptAddress
-                        , _conjureNetworkToken         = Value.assetClass conjCs conjTTn 
-                        , _conjureTributeAmount        = conjureNetworkTributeAmount cnp
-                        , _spawnNetworkToken           = Nothing 
-                        , _initializeThothNetworkToken = Nothing 
-                        , _activateThothNetworkToken   = Nothing 
+                        { _researcherZeroAddress           = addr
+                        , _thothNetworkScriptAddresss      = scriptAddress
+                        , _conjureNetworkToken             = Value.assetClass conjCs conjTTn 
+                        , _conjureTributeAmount            = conjureNetworkTributeAmount cnp
+                        , _spawnNetworkToken               = Nothing 
+                        , _initializeThothNetworkToken     = Nothing 
+                        , _activateThothNetworkToken       = Nothing 
+                        , _activateThothNetworkTokenAmount = Nothing
                         }
                 let tributeVal                = lovelaceValueOf $ conjureNetworkTributeAmount cnp
                     conjTVal                  = Value.singleton conjCs conjTTn conjTAmt
-                    conjTSplit                = splitInitToken conjTVal
-                    conjTScriptSplit          = case splitInitToken conjTVal of
+                    conjTSplit                = splitTokenVal conjTVal
+                    conjTScriptSplit          = case splitTokenVal conjTVal of
                                                      Nothing -> Value.singleton conjCs conjTTn 1
                                                      Just s  -> fst s
-                    conjTResearcherSplit      = case splitInitToken conjTVal of
+                    conjTResearcherSplit      = case splitTokenVal conjTVal of
                                                      Nothing -> Value.singleton conjCs conjTTn 1
                                                      Just s  -> snd s
                     scriptValPkg              = tributeVal <> conjTScriptSplit
@@ -596,6 +682,7 @@ initializeThothNetwork cnp = do
                                        logInfo @String $ "Updated datum with spawnToken: " ++ show (_spawnNetworkToken nattr')
                                        
                                     --    return (scriptAddress, spawnTAssetClass)
+                                       tell $ Last $ Just (scriptAddress, spawnTAssetClass)
                                     
 
                         --  return scriptAddress
@@ -634,8 +721,8 @@ initializeThothNetwork cnp = do
 spawnAcitivityMultipliplier :: Integer
 spawnAcitivityMultipliplier = 5
 
-splitInitToken :: Value -> Maybe (Value, Value)
-splitInitToken initVal = if not (Value.isZero initVal) then case flattenValue initVal of 
+splitTokenVal :: Value -> Maybe (Value, Value)
+splitTokenVal initVal = if not (Value.isZero initVal) then case flattenValue initVal of 
                                                                  [(cs, tn, amt)] -> Just (shareTAmt amt cs tn)
                                                                  _               -> Nothing
                                                        else Nothing 
@@ -655,7 +742,7 @@ splitSpawnToken spawnVal = if not (Value.isZero spawnVal) then case flattenValue
                                   (Value.singleton cs tn split, Value.singleton cs tn split)                                     
 
 
-data NetworkActivateParams = NetworkActivateParams
+data NetworkInitializeParams = NetworkInitializeParams
     { initializeNetworkTokenName          :: !TokenName
     , initializeNetworkTokenInitialSupply :: !Integer
     , spawnNetworkAccessToken             :: !AssetClass
@@ -663,14 +750,14 @@ data NetworkActivateParams = NetworkActivateParams
     , rZeroActivateAddress                :: !Address
     } deriving (Show, Generic, FromJSON, ToJSON)
 
-activateThothNetwork :: forall w s. NetworkActivateParams -> Contract w s Text ()
-activateThothNetwork nap = do 
+initializeThothNetwork :: forall w s. NetworkInitializeParams -> Contract w s Text ()
+initializeThothNetwork nip = do 
     pkh <- Contract.ownPaymentPubKeyHash
-    let scriptAddress  = networkScriptAddress nap 
-        spawnNToken    = spawnNetworkAccessToken nap
-        rZeroAddr      = rZeroActivateAddress nap
-        initTTokenName = initializeNetworkTokenName nap
-        initTTokenAmt  = initializeNetworkTokenInitialSupply nap 
+    let scriptAddress  = networkScriptAddress nip 
+        spawnNToken    = spawnNetworkAccessToken nip
+        rZeroAddr      = rZeroActivateAddress nip
+        initTTokenName = initializeNetworkTokenName nip
+        initTTokenAmt  = initializeNetworkTokenInitialSupply nip 
     
     netOutput <- findNetworkAttributesOutput spawnNToken scriptAddress
     case netOutput of 
@@ -681,25 +768,33 @@ activateThothNetwork nap = do
                   let spawnNetworkToken = case _spawnNetworkToken nattr of 
                                                Just st -> st
                                             --    Nothing -> throwError "Could not find spawn token in datum"
-                  rUtxos <- fundsAtAddressGeq rZeroAddr (Ada.lovelaceValueOf 10_000_000)
+                  rUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) spawnNetworkToken >= 1) <$> utxosAt rZeroAddr    --fundsAtAddressGeq rZeroAddr (Ada.lovelaceValueOf 50_000_000)
                   sUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) spawnNetworkToken >= 1) <$> utxosAt scriptAddress
                   case Map.toList rUtxos of 
-                     [(rAdaToref, rAdaTo)] -> do 
+                    [(rAdaToref, rAdaTo)] -> do 
                          Contract.logDebug @String $ printf "picked UTxo at" ++ (show rAdaToref) ++ "with value" ++ (show $ _ciTxOutValue rAdaTo)
                          case Map.toList sUtxos of 
                             [(rSpwnToref, rSpwnTo)] -> do 
                                 Contract.logDebug @String $ printf "picked UTxo at" ++ (show rSpwnToref) ++ "with value" ++ (show $ _ciTxOutValue rSpwnTo)
-                                let initTokenCurSymbol = networkInitializeTokenCurSym rZeroAddr nattr rAdaToref rSpwnToref initTTokenName initTTokenAmt
-                                    initTPolicy        = networkInitializeTokenPolicy rZeroAddr nattr rAdaToref rSpwnToref initTTokenName initTTokenAmt
-                                    initTokenVal       = Value.singleton initTokenCurSymbol initTTokenName initTTokenAmt
-                                    initTAssetClass    = Value.assetClass initTokenCurSymbol initTTokenName 
-                                    rAddr              = nattr ^. researcherZeroAddress
-                                    nattr'             = nattr & initializeThothNetworkToken .~ (Just initTAssetClass)
-                                    netValHash         = case _ciTxOutValidator rSpwnTo of 
+                                let initTokenCurSymbol   = networkInitializeTokenCurSym rZeroAddr nattr rAdaToref rSpwnToref initTTokenName initTTokenAmt
+                                    initTPolicy          = networkInitializeTokenPolicy rZeroAddr nattr rAdaToref rSpwnToref initTTokenName initTTokenAmt
+                                    initTokenVal         = Value.singleton initTokenCurSymbol initTTokenName initTTokenAmt
+                                    initTAssetClass      = Value.assetClass initTokenCurSymbol initTTokenName 
+                                    initTScriptSplit     = case splitTokenVal initTokenVal of
+                                                                Nothing -> Value.singleton initTokenCurSymbol initTTokenName 1
+                                                                Just s  -> fst s
+                                    initTResearcherSplit = case splitTokenVal initTokenVal of
+                                                                Nothing -> Value.singleton initTokenCurSymbol initTTokenName 1
+                                                                Just s  -> snd s
+                                    rAddr                = nattr ^. researcherZeroAddress
+                                    nattr'               = nattr & initializeThothNetworkToken .~ (Just initTAssetClass)
+                                    netValHash           = case _ciTxOutValidator rSpwnTo of 
                                                               Left vh -> vh
                                                               Right v -> validatorHash v
-                                    spawnTValue        = _ciTxOutValue rSpwnTo
-                                    initScriptValpkg   = spawnTValue <> initTokenVal
+                                    spawnTScriptValue    = _ciTxOutValue rSpwnTo
+                                    spawnTReValue        = _ciTxOutValue rAdaTo
+                                    initResearcherPkg    = initTResearcherSplit <> spawnTReValue
+                                    initScriptValpkg     = spawnTScriptValue <> initTScriptSplit
                                 let lookups     = Constraints.typedValidatorLookups (typedNetworkValidator rZeroAddr)          <>
                                                   Constraints.mintingPolicy initTPolicy                                        <>
                                                   Constraints.otherScript (networkValidator rZeroAddr)                         <>
@@ -709,25 +804,92 @@ activateThothNetwork nap = do
                                     constraints = Constraints.mustMintValue initTokenVal                                                                                                           <>
                                                   Constraints.mustSpendPubKeyOutput rAdaToref                                                                                                      <>
                                                   Constraints.mustSpendScriptOutput rSpwnToref (Redeemer $ PlutusTx.toBuiltinData (InitializeNetwork (unPaymentPubKeyHash pkh, initTAssetClass)))  <>
-                                                  Constraints.mustPayToOtherScript netValHash (Datum $ PlutusTx.toBuiltinData (Initialized nattr')) initScriptValpkg
+                                                  Constraints.mustPayToOtherScript netValHash (Datum $ PlutusTx.toBuiltinData (Initialized nattr')) initScriptValpkg                               <>
+                                                  Constraints.mustPayToPubKey pkh initResearcherPkg
 
                                 adjustAndSubmitWith @ThothNetwork lookups constraints
                                 logInfo @String $ "Researcher zero has minted initToken: " ++ (show initTokenVal)
-                
+                    orefs  -> Contract.logError @String $ "Utxos not right!!" ++ show orefs  -- TODO: Better error message 
+
+data NetworkActivateParams = NetworkActivateParams
+    { activateNetworkTokenName                    :: !TokenName
+    , activateNetworkTokenInitialSupply           :: !Integer
+    , initNetworkAccessToken                      :: !AssetClass
+    , activatenetworkScriptAddress                :: !Address 
+    , activateRZeroActivateAddress                :: !Address
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+activateThothNetwork :: forall w s. NetworkActivateParams -> Contract w s Text (AssetClass)   
+activateThothNetwork nap = do 
+    pkh <- Contract.ownPaymentPubKeyHash
+    let scriptAddress  = activatenetworkScriptAddress nap 
+        initNToken    = initNetworkAccessToken nap
+        rZeroAddr      = activateRZeroActivateAddress nap
+        activateTTokenName = activateNetworkTokenName nap
+        activateTTokenAmt  = activateNetworkTokenInitialSupply nap 
+
+    netOutput <- findNetworkAttributesOutput initNToken scriptAddress 
+    case netOutput of 
+         Nothing -> traceError "Problem finding network datum!!"
+         Just (noref, no, ndat) -> case ndat of 
+              Initialized nattr ->  do 
+                  logInfo @String "network has been initialized with datum!"
+                  let initNetworkToken = case _initializeThothNetworkToken nattr of 
+                                              Just st -> st
+                  rUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) initNetworkToken >= 1) <$> utxosAt rZeroAddr
+                  sUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) initNetworkToken >= 1) <$> utxosAt scriptAddress
+
+                  case Map.toList rUtxos of 
+                       [(rAdaToref, rAdaTo)] -> do 
+                         Contract.logDebug @String $ printf "picked UTxo at" ++ (show rAdaToref) ++ "with value" ++ (show $ _ciTxOutValue rAdaTo)
+                         case Map.toList sUtxos of 
+                             [(rInitToref, rInitTo)] -> do 
+                                Contract.logDebug @String $ printf "picked UTxo at" ++ (show rAdaToref) ++ "with value" ++ (show $ _ciTxOutValue rInitTo)
+                                let activateTokenCurSym      = networkActivateTokenCurSym rZeroAddr nattr rAdaToref rInitToref activateTTokenName activateTTokenAmt
+                                    activateTokenPolicy      = networkActivateTokenPolicy rZeroAddr nattr rAdaToref rInitToref activateTTokenName activateTTokenAmt
+                                    activateTokenVal         = Value.singleton activateTokenCurSym activateTTokenName activateTTokenAmt
+                                    activateTAssetClass      = Value.assetClass activateTokenCurSym activateTTokenName 
+                                    netValHash               = case _ciTxOutValidator rInitTo of 
+                                                                    Left vh -> vh
+                                                                    Right v -> validatorHash v
+                                    nattr'               = nattr & activateThothNetworkToken .~ (Just activateTAssetClass)
+
+                                let lookups     = Constraints.typedValidatorLookups (typedNetworkValidator rZeroAddr)          <>
+                                                  Constraints.mintingPolicy activateTokenPolicy                                <>
+                                                  Constraints.otherScript (networkValidator rZeroAddr)                         <>
+                                                  Constraints.unspentOutputs (Map.singleton rInitToref rInitTo)                <>
+                                                  Constraints.unspentOutputs (Map.singleton rAdaToref rAdaTo)                  
+
+                                    constraints = Constraints.mustMintValue activateTokenVal                                   <>
+                                                  Constraints.mustSpendPubKeyOutput rAdaToref                                                                                                      <>
+                                                  Constraints.mustSpendScriptOutput rInitToref (Redeemer $ PlutusTx.toBuiltinData (ActivateNetwork (unPaymentPubKeyHash pkh, activateTAssetClass)))  <>
+                                                  Constraints.mustPayToOtherScript netValHash (Datum $ PlutusTx.toBuiltinData (Active nattr')) activateTokenVal                               
+                                                                                                   
+                      
+
+                                adjustAndSubmitWith @ThothNetwork lookups constraints
+                                logInfo @String $ "Researcher zero has minted activateToken: " ++ (show activateTokenVal)
+                                
+
+
+
 
 type ThothNetworkSchema = 
         Endpoint "conjure" ConjureNetworkParams
+    .\/ Endpoint "initialize" NetworkInitializeParams
     .\/ Endpoint "activate" NetworkActivateParams
 
-endpoints :: Contract () ThothNetworkSchema Text ()
-endpoints = awaitPromise (conjure `select` activate) >> endpoints
+conjEndpoint :: Contract (Last (Address, AssetClass)) ThothNetworkSchema Text ()
+conjEndpoint = awaitPromise $ endpoint @"conjure" $ \cnp -> do conjureThothNetwork cnp
+
+initEndpoint :: Contract () ThothNetworkSchema Text ()
+initEndpoint = awaitPromise activate >> initEndpoint
     where
-        conjure = endpoint @"conjure" $ \cnp -> do
-            initializeThothNetwork cnp
+        activate = endpoint @"initialize" $ \nip -> do 
+            initializeThothNetwork nip 
 
-        activate = endpoint @"activate" $ \nap -> do 
-            activateThothNetwork nap 
-
+activateEndpoint :: Contract () ThothNetworkSchema Text (AssetClass)
+activateEndpoint = awaitPromise $ endpoint @"conjure" $ \cnp -> do conjureThothNetwork cnp
 
 -- mkSchemaDefinitions ''ThothNetworkSchema
 

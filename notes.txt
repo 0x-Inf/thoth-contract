@@ -1,5 +1,8 @@
 Thoth designing and planning:
 
+We've realized much later (date of this edit) that this whole thing is really about bringing science to everyone and enable participation from 
+everyone essentially (obviosly this may not be achieved in practice) it's the p.c revolution but with the science (from the internet). 
+
 Some Tenets to keep in mind during design
  - Openness
  - Sharing knowledge
@@ -250,3 +253,26 @@ Some mathematical notions:
    policies need to reflect these returns and also the validator checks 
  - The testing suite is still not comprehensive for the mints 
  - We noticed that we could add more lookups to make spending from the script even more secure, of course this will go hand in hand with the validator. 
+
+ -- development recap for 27 Apr 2022
+  - Found out that we could make multiple endpoints for the contract 'calls'(this was obvious...don't know how we missed it)
+  - We need to modify a check so as to check that a token has been send to a particular address.
+
+
+-- development notes for 28-29 Apr 2022 
+ - Made the checks for Initializing the network more robust 
+ - Also made the minting policy for the activate network token 
+ - While doing the above there was this idea of 'infinitely splitting' the active network token every time a researcher uses it to create a researcher token 
+   that they can use for their researcher script 'actions'
+ - Further, for the researcher script we need to have a 'lineage' for the contributions of the researcher and Maybe also link it to the 'rewards'. The reason 
+   for doing this is that we can have a 'chain of knowledge', we also need to find a way to associate this with other researcher's contributions relative to 
+   the current researcher. 
+ - Find a way to get the return of the contract monad in the emulator trace testing and also think about how to get this information from the real world 
+   blockchain. 
+ - Refine the checks for activating the network to ensure that anyone (any pkh) after the network has been activated can interact with the network script address 
+   so as to 'create' their script addresses. This will also come with some concurrency concerns so that is something to think about. 
+ - Again start thinking of how the off-chain code will actually be used with the 'front-end' (We mean its literally the front end but....)
+ - Start thinking about the 'properties' of the effort tokens, knowledge tokens etc. 
+ - We made an observation that since the Integer type provided by haskell can handle infinite numbers then we can morph the tokens that we create to represent 
+   network and researcher interaction in infinite many ways. 
+   

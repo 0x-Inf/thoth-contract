@@ -105,6 +105,9 @@ conjureNetworkAssetTokenName = "Conjure Thoth"
 initializeNetworkAssetTokenName :: TokenName
 initializeNetworkAssetTokenName = "Initialize Thoth"
 
+activateNetworkAssetTokenName :: TokenName
+activateNetworkAssetTokenName = "Thoth Activate"
+
 initNetworkParams :: BuiltinByteString
 initNetworkParams = "Thoth one"
 
@@ -126,25 +129,38 @@ networkInitTrace = do
                 , conjureNetworkDeadline       = initDeadline
                 }
 
-    h1 <- activateContractWallet w1 endpoints
+    h1 <- activateContractWallet w1 conjEndpoint
     
     callEndpoint @"conjure" h1 nip
     void $ Emulator.waitNSlots 10
+    Last m <- observableState h1
+    case m of 
+         Nothing -> Extras.logError $ "Error conjuring network with params: " ++ show nip 
+         Just (scriptAddress, spwnToken) -> do 
+             Extras.logError $ "Spawned network with token: " ++ show spwnToken
+
+             let initTokenInitSupply = 2
+                    
+             let nip = NetworkInitializeParams
+                        { initializeNetworkTokenName          = initializeNetworkAssetTokenName
+                        , initializeNetworkTokenInitialSupply = initTokenInitSupply
+                        , spawnNetworkAccessToken             = spwnToken
+                        , networkScriptAddress                = scriptAddress 
+                        , rZeroActivateAddress                = addr
+                        }
+
+             h2 <- activateContractWallet w1 endpoints
+             callEndpoint @"initialize" h2 nip 
+             void $ Emulator.waitNSlots 3
 
 
-    let initTokenInitSupply = 2
-        
-
-    -- TODO: find a way to get the script address and the spawn token
-    let nap = NetworkActivateParams
-                { initializeNetworkTokenName          = initializeNetworkAssetTokenName
-                , initializeNetworkTokenInitialSupply = initTokenInitSupply
-                , spawnNetworkAccessToken             = initNetworkParams
-                , networkScriptAddress                = scriptAddress 
-                , rZeroActivateAddress                = addr
-                }
-    -- callEndpoint @"activate" h1 nap 
-    -- void $ Emulator.waitNSlots 3
+             let nap = NetworkActivateParams
+                        { activateNetworkTokenName               = activateNetworkAssetTokenName
+                        , activateNetworkTokenInitialSupply      = Integer
+                        , initNetworkAccessToken                 = AssetClass
+                        , activatenetworkScriptAddress           = Address 
+                        , activateRZeroActivateAddress           = Address
+                        }
 
 
 
