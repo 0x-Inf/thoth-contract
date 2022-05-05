@@ -268,7 +268,7 @@ Some mathematical notions:
    for doing this is that we can have a 'chain of knowledge', we also need to find a way to associate this with other researcher's contributions relative to 
    the current researcher. 
  - Find a way to get the return of the contract monad in the emulator trace testing and also think about how to get this information from the real world 
-   blockchain. 
+   blockchain. (Turns out the writer part of the monad allows us to do exactly this)
  - Refine the checks for activating the network to ensure that anyone (any pkh) after the network has been activated can interact with the network script address 
    so as to 'create' their script addresses. This will also come with some concurrency concerns so that is something to think about. 
  - Again start thinking of how the off-chain code will actually be used with the 'front-end' (We mean its literally the front end but....)
@@ -276,3 +276,13 @@ Some mathematical notions:
  - We made an observation that since the Integer type provided by haskell can handle infinite numbers then we can morph the tokens that we create to represent 
    network and researcher interaction in infinite many ways. 
    
+
+-- development notes 5 May 2022 
+  - In making the activeTokens from which researchers can get their active tokens we've encountered a potential problem where we don't know the 'true state'
+    this is useful as it helps the script know the correct amount to mint so as to prevent collisions of spending utxos 
+  - Made the activate Researcher part of the network
+  - The nitty girities don't work as expected but we'll work on them 
+  - A problem is where we have multiple utxos for minting the activateResearcher Token 
+  - We need to think more on the concurrency aspect of the network script; given now that many addresses might want to activate Researcher at the same time 
+  - And also 'feedback' messages from the researcher's script to the network script; information obtained from these relations might be useful.
+  - Think on how 'effort' should be calculated and also how it will be represented in the script (both network and researcher)

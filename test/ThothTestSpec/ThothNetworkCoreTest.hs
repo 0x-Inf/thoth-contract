@@ -82,7 +82,7 @@ myPredicate =
 
 
 emCfg :: EmulatorConfig
-emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v)]) def def 
+emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v), (knownWallet 2 , v)]) def def 
     where
         v :: Value 
         v = Ada.lovelaceValueOf 100_000_000
@@ -108,6 +108,9 @@ initializeNetworkAssetTokenName = "Initialize Thoth"
 activateNetworkAssetTokenName :: TokenName
 activateNetworkAssetTokenName = "Thoth Activate"
 
+activateResearcherAssetTokenName :: TokenName
+activateResearcherAssetTokenName = "THOTH ONE"
+
 initNetworkParams :: BuiltinByteString
 initNetworkParams = "Thoth one"
 
@@ -115,6 +118,7 @@ initNetworkParams = "Thoth one"
 networkInitTrace :: EmulatorTrace ()
 networkInitTrace = do 
     let w1 = knownWallet 1
+        w2 = knownWallet 2
         addr = mockWalletAddress w1
         tributeAmount        = 15_000_000
         networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit' in the off-chain code
@@ -122,20 +126,20 @@ networkInitTrace = do
         initTokenAmount = 8
 
 
-    let nip = ConjureNetworkParams 
+    let cnp = ConjureNetworkParams 
                 { conjuringResearcherAddress   = addr
                 , conjureNetworkTributeAmount  = tributeAmount
                 , conjureNetworkTokenName      = conjureNetworkAssetTokenName
                 , conjureNetworkDeadline       = initDeadline
                 }
 
-    h1 <- activateContractWallet w1 conjEndpoint
+    h1 <- activateContractWallet w1 initEndpoints
     
-    callEndpoint @"conjure" h1 nip
+    callEndpoint @"conjure" h1 cnp
     void $ Emulator.waitNSlots 10
     Last m <- observableState h1
     case m of 
-         Nothing -> Extras.logError $ "Error conjuring network with params: " ++ show nip 
+         Nothing -> Extras.logError $ "Error conjuring network with params: " ++ show cnp 
          Just (scriptAddress, spwnToken) -> do 
              Extras.logError $ "Spawned network with token: " ++ show spwnToken
 
@@ -149,18 +153,63 @@ networkInitTrace = do
                         , rZeroActivateAddress                = addr
                         }
 
-             h2 <- activateContractWallet w1 endpoints
+             h2 <- activateContractWallet w1 initEndpoints
              callEndpoint @"initialize" h2 nip 
              void $ Emulator.waitNSlots 3
 
+             Last m <- observableState h2 
+             case m of 
+                  Nothing -> Extras.logError $ "Error geting last of contract monad with call: " ++ show nip 
+                  Just (scripAddress, initToken) -> do 
+                      Extras.logError $ "Initialized network with token: " ++ show initToken
 
-             let nap = NetworkActivateParams
-                        { activateNetworkTokenName               = activateNetworkAssetTokenName
-                        , activateNetworkTokenInitialSupply      = Integer
-                        , initNetworkAccessToken                 = AssetClass
-                        , activatenetworkScriptAddress           = Address 
-                        , activateRZeroActivateAddress           = Address
-                        }
+                      let nap = NetworkActivateParams
+                                  { initNetworkAccessToken                 = initToken
+                                  , activatenetworkScriptAddress           = scripAddress 
+                                  , activateRZeroActivateAddress           = addr
+                                  }
+
+                      h3 <- activateContractWallet w1 activateEndpoint
+                      callEndpoint @"activate" h3 nap
+                      void $ Emulator.waitNSlots 2
+
+                      Last m <- observableState h3 
+                      case m of 
+                           Nothing -> Extras.logError $ "Error getting output from contract instance with attr: " ++ show nap 
+                           Just (scripAddress, activeToken) -> do 
+                                Extras.logError $ "Activated network with token: " ++ show activeToken
+                                let reAddr            = mockWalletAddress w2
+                                    activateDeadline = slotToEndPOSIXTime def 10
+
+                                let rap = ResearcherActivateParams
+                                            { activeNetworkAccessToken    = activeToken
+                                            , activeNetworkScriptAddress  = scripAddress
+                                            , activatingResearcherAddress = reAddr
+                                            , activeResearcherTokenName   = activateResearcherAssetTokenName
+                                            , activateResearcherDeadline  = activateDeadline
+                                            }
+                                
+                                h4 <- activateContractWallet w2 activateResearcherEndpoint
+                                -- void $ Emulator.waitNSlots 5
+                                callEndpoint @"researcherActivate" h4 rap 
+                                void $ Emulator.waitNSlots 5
+
+                                let reAddr1            = mockWalletAddress w1
+                                    activateDeadline   = slotToEndPOSIXTime def 10
+
+                                let rap1 = ResearcherActivateParams
+                                            { activeNetworkAccessToken    = activeToken
+                                            , activeNetworkScriptAddress  = scripAddress
+                                            , activatingResearcherAddress = reAddr1
+                                            , activeResearcherTokenName   = activateResearcherAssetTokenName
+                                            , activateResearcherDeadline  = activateDeadline
+                                            }
+                                
+                                h5 <- activateContractWallet w1 activateResearcherEndpoint
+                                -- void $ Emulator.waitNSlots 5
+                                callEndpoint @"researcherActivate" h5 rap1
+                                void $ Emulator.waitNSlots 5
+
 
 
 
