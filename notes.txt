@@ -79,7 +79,7 @@ Can have someone set up a script address like an continuous faucet for n tokens 
 a timed bank.
 
 'Dynamic' courts of first knowledge (\phi). Here the users can create courts which specialize in certain knowledge types and one can submit a collection 
-of items and the court can decide if the items are first knowledge or not... among other features 
+of items and the court can decide if the items are first knowledge or not... among other features. 
 
 We'll use the datum at some utxos to specify how a researcher interacts with specific parts of the network. For instance say a researcher x is browsing 
 in the funding section then they open a pool and approve a proposal to fund a certain problem. Then that chain of interactions which will involve minting 
@@ -274,7 +274,7 @@ Some mathematical notions:
  - Again start thinking of how the off-chain code will actually be used with the 'front-end' (We mean its literally the front end but....)
  - Start thinking about the 'properties' of the effort tokens, knowledge tokens etc. 
  - We made an observation that since the Integer type provided by haskell can handle infinite numbers then we can morph the tokens that we create to represent 
-   network and researcher interaction in infinite many ways. 
+   network and researcher interaction in infinite many ways.(This ties well with the below idea of script trees(Maybe acyclic graphs) of relations)  
    
 
 -- development notes 5 May 2022 
@@ -286,3 +286,51 @@ Some mathematical notions:
   - We need to think more on the concurrency aspect of the network script; given now that many addresses might want to activate Researcher at the same time 
   - And also 'feedback' messages from the researcher's script to the network script; information obtained from these relations might be useful.
   - Think on how 'effort' should be calculated and also how it will be represented in the script (both network and researcher)
+
+-- Implementation ideas 
+
+An idea for a use-scenario is where you have some 'collection of knowledge' (which some in this day would call a paper) and is viewable in expert mode 
+where you have different kinds of interactions compared to when you are in say casual mode where you are presented with similar information but then in 
+'lay-man' form; here is where we can use the conversational features to incentivize engagement and also question asking and answering and also linking with 
+knowledge from other sources such as arxiv;(math...)overflow etc 
+
+-- controlling who is able to mint what tokens and maybe also the amt of those tokens is a good way to model some of the semantics of a knowledge 'repository'
+
+Script trees... for showing which 'knowledge points' are linked; they can be trees or graphs. In the points we'll just specify the relations, we will probably 
+have to show that given all the relations there is 'complete Knowledge Graph' of the entire network. An idea of a proof is using the yoneda lemma where 
+we model the scripts (knowledge points) as objects and their specified relations as morphisms and we show that if you know how the object relates to all 
+other objects then you know the object and if you do this for all (sounds like the use of ends and coends) objects they you have some notion of 
+'complete information'. 
+
+When implementing the bounties section we could steal some ideas from the escrow thing; where we have targets for the 'payouts' and a designated pkh. Given that 
+the bounties are for problems and questions  (e.g millenium prize problems) there would a knowledge verification stage (basically a vote(Maybe); Here the hunter would 
+provide 'evidence' (some tokens that represent the answers or findings) and given the criteria given for bounty completion some 'witnesses' may vote on whether the 
+criteria has been met by available evidence). This seems like it comes down to multiple contracts in 'one' where we have voting, some escrowy thing, etc...
+
+collectFromScriptFilter is a good way to get the right utxos from some address; this could be useful in concurrency where we only spend some utxos which 
+have certain datums.... Maybe. Think on how to use this some more. 
+
+There is this concept of tokenAccounts where we could use AssetClasses to represent ownershipt (or roles) in a contract. This could be useful in scenarios 
+such as funding where we want to record who owns what, for instance in a funding pool.(since one can fund different 'items'). This could also be used to 
+store how many researchers are active in the network (there could be a list in the datum of the associated script)
+
+Making custom errors for our network and the associated actions, follow the style of the Futures contract in the plutus-use-cases example 
+
+See if you can add tokens with 'custom' datums to the script address. For instance we can have the researcher tokens have datums that might be used to 
+uniquely identify a researcher; this will be useful in reducing the chances of spend collisions as every researcher would be in essence spending a unique 
+utxo.
+
+We could have a governance thing going such that it will enable 'voting' for various aspects of the network. For instance we could have that the 'courts' are 
+essentially where someone submits a 'knowledge proposal' and some 'designated voters'(Volunteers who get some token in return).There are some ideas of using 
+a 'formal' engine to 'vote' for some knowledge proposals(especially mathematical ones). Since we have natively the knowledge represented a some (Maybe Token)
+the researcher can submit a collection of these tokens to signify what knowledge they want to 'create' after 'voting'. Also instead of voting we could have 
+post-contributions where depending on some agreed upon (through a vote) criteria the contributions can meet then the knowledge is created. An example is where 
+some scientists agree that for some ideas to be considered knowledge then their 'collective'(contributions and init 'proposal') has to consist of some 
+interactions... and then the 'reward' would be the 'knowledge token' or non if the criteria is not met by the collective. 
+
+Multisigs would be useful in situations such as bounties of funding pools where multiple people need to sign off before transfer of tokens. With the 
+multisigStateMachine in plutus-use-cases we can even make it such that we can add the signatories as we go and also propose to make payments; in projects 
+this would also come in handy in payouts after project completion or during the stages of the project where some resources are required and they are locked
+by some signatories; also Accreditation can benefit from this especially high assurance credits where they are released if certain pkh have signed associated 
+transactions. Adding some item to a certain collection might also require signing off by the collection owners (in the case where there are multiple). Also 
+decisions to join fellowships (essentially getting an 'access' token) can be made by multiple parties. 

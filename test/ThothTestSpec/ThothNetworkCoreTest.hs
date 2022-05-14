@@ -82,7 +82,7 @@ myPredicate =
 
 
 emCfg :: EmulatorConfig
-emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v), (knownWallet 2 , v)]) def def 
+emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v), (knownWallet 2 , v), (knownWallet 3 , v)]) def def 
     where
         v :: Value 
         v = Ada.lovelaceValueOf 100_000_000
@@ -119,6 +119,7 @@ networkInitTrace :: EmulatorTrace ()
 networkInitTrace = do 
     let w1 = knownWallet 1
         w2 = knownWallet 2
+        w3 = knownWallet 3
         addr = mockWalletAddress w1
         tributeAmount        = 15_000_000
         networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit' in the off-chain code
@@ -194,21 +195,37 @@ networkInitTrace = do
                                 callEndpoint @"researcherActivate" h4 rap 
                                 void $ Emulator.waitNSlots 5
 
-                                let reAddr1            = mockWalletAddress w1
-                                    activateDeadline   = slotToEndPOSIXTime def 10
+                                let reAddr2            = mockWalletAddress w3
+                                    activateDeadline = slotToEndPOSIXTime def 10
 
-                                let rap1 = ResearcherActivateParams
+                                let rap = ResearcherActivateParams
                                             { activeNetworkAccessToken    = activeToken
                                             , activeNetworkScriptAddress  = scripAddress
-                                            , activatingResearcherAddress = reAddr1
+                                            , activatingResearcherAddress = reAddr2
                                             , activeResearcherTokenName   = activateResearcherAssetTokenName
                                             , activateResearcherDeadline  = activateDeadline
                                             }
                                 
-                                h5 <- activateContractWallet w1 activateResearcherEndpoint
+                                h5 <- activateContractWallet w3 activateResearcherEndpoint
                                 -- void $ Emulator.waitNSlots 5
-                                callEndpoint @"researcherActivate" h5 rap1
+                                callEndpoint @"researcherActivate" h5 rap 
                                 void $ Emulator.waitNSlots 5
+
+                                -- let reAddr1            = mockWalletAddress w1
+                                --     activateDeadline   = slotToEndPOSIXTime def 10
+
+                                -- let rap1 = ResearcherActivateParams
+                                --             { activeNetworkAccessToken    = activeToken
+                                --             , activeNetworkScriptAddress  = scripAddress
+                                --             , activatingResearcherAddress = reAddr1
+                                --             , activeResearcherTokenName   = activateResearcherAssetTokenName
+                                --             , activateResearcherDeadline  = activateDeadline
+                                --             }
+                                
+                                -- h5 <- activateContractWallet w1 activateResearcherEndpoint
+                                -- -- void $ Emulator.waitNSlots 5
+                                -- callEndpoint @"researcherActivate" h5 rap1
+                                -- void $ Emulator.waitNSlots 5
 
 
 

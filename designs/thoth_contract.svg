@@ -24,9 +24,9 @@
      inkscape:document-units="mm"
      showgrid="false"
      showborder="false"
-     inkscape:zoom="0.29801371"
-     inkscape:cx="4546.7706"
-     inkscape:cy="1615.6975"
+     inkscape:zoom="0.32007214"
+     inkscape:cx="2740.0073"
+     inkscape:cy="7890.4086"
      inkscape:window-width="1862"
      inkscape:window-height="1016"
      inkscape:window-x="58"
@@ -7060,5 +7060,30 @@
          cy="-102.38509"
          r="7.5806537" />
     </g>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.52916667;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+       d="m 446.2023,2045.7058 c 285.72229,0 285.72229,0 285.72229,0"
+       id="path2136" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="747.36133"
+       y="2033.7858"
+       id="text5626"><tspan
+         sodipodi:role="line"
+         id="tspan5624"
+         style="stroke-width:0.264583"
+         x="747.36133"
+         y="2033.7858">This is essentially a collection of other entries; e.g figures, definitions, </tspan><tspan
+         sodipodi:role="line"
+         style="stroke-width:0.264583"
+         x="747.36133"
+         y="2047.0149"
+         id="tspan5628">paragraphs, essays, experirents, proofs (formal or hand written), code, </tspan><tspan
+         sodipodi:role="line"
+         style="stroke-width:0.264583"
+         x="747.36133"
+         y="2060.2439"
+         id="tspan5630">traditional papers, art, poetry, references etc etc </tspan></text>
   </g>
 </svg>

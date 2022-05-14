@@ -13,12 +13,16 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module ThothCore.ThothNetworkCore
-    ( conjureThothNetwork
+    ( 
+    -- * Functionality for network Initialization        
+      conjureThothNetwork
     , initEndpoints
     , conjEndpoint
     , activateEndpoint
     , activateResearcherEndpoint
+    -- * Coverage Testing
     , networkCovIdx
+    -- * Initialization Parameters
     , ConjureNetworkParams (..)
     , NetworkInitializeParams (..)
     , NetworkActivateParams (..)
@@ -305,7 +309,7 @@ mkResearcherActivateTokenPolicy addr adaOref activeTknOref tn amt deadline () ct
       info = scriptContextTxInfo ctx 
 
       hasResearcherAdaUtxo :: Bool 
-      hasResearcherAdaUtxo = any (\i -> txInInfoOutRef i == adaOref) $ txInfoInputs info
+      hasResearcherAdaUtxo = any (\i -> txInInfoOutRef i == adaOref) $ txInfoInputs info -- TODO: Check on the plutus-use-cases how this can be changed to use spendsOutputs if current prooves expensive
 
       hasNetworkActiveToken ::  Bool 
       hasNetworkActiveToken = any (\i -> txInInfoOutRef i == activeTknOref) $ txInfoInputs info
@@ -313,7 +317,7 @@ mkResearcherActivateTokenPolicy addr adaOref activeTknOref tn amt deadline () ct
       checkSignature :: Address -> Bool 
       checkSignature addr' = txSignedBy info (addressPkh addr') 
 
-      checkMintedAmount :: Bool 
+      checkMintedAmount :: Bool                                                           -- TODO: Can use currencyValue and ownSymbol to get expected mint amount; this will remove the need for passing it in
       checkMintedAmount = case flattenValue (txInfoMint info) of
                                  [(_, tn', amt')] -> tn' == tn && amt' == amt 
                                  _                -> False  
@@ -345,18 +349,33 @@ researcherActivateTokenPolicy addr adaOref activeTknOref tn amt deadline = mkMin
 researcherActivateTokenCurSym ::  Address -> AdaTxOutRef -> ActiveTokenTxOutRef -> TokenName -> Integer -> POSIXTime -> CurrencySymbol
 researcherActivateTokenCurSym addr adaOref activeTknOref tn amt = scriptCurrencySymbol . researcherActivateTokenPolicy addr adaOref activeTknOref tn amt
     
-
+-- | The data for network attributes 
 data NetworkAttrbutes = NetworkAttrbutes
     { _researcherZeroAddress             :: Address
+    -- ^ The initial researcher who sets up the network.
     , _thothNetworkScriptAddresss        :: Address 
+    -- ^ The address for the network script.
     , _conjureNetworkToken               :: AssetClass
+    -- ^ The token indicating that the network has been conjured. (see note [Initialization Tokens])
     , _conjureTributeAmount              :: Integer
+    -- ^ The amount of Ada the initial researcher *donates* to the network script.
     , _spawnNetworkToken                 :: Maybe AssetClass
+    -- ^ The token minted after spawning the network. (see note [Initialization Tokens])
     , _initializeThothNetworkToken       :: Maybe AssetClass  
+    -- ^ The token for initializing the network. (see note [Initialization Tokens])
     , _activateThothNetworkToken         :: Maybe AssetClass
+    -- ^ The token indicating that the network is active and can 'create' researchers.
     , _activateThothNetworkTokenAmount   :: Maybe Integer 
+    -- ^ This token amount will be useful in making the network behave concurrently.
     , _activeResearchersTokens           :: Maybe Integer
+    -- ^ A proxy token for how many researchers are active in the network.
     } deriving Show
+
+{- note [Initialization Tokens]
+
+It certainly seems that we might have redundant tokens here; we still don't have a compelling reason for their inclusion,
+and we could just remove some of them.
+-}
 
 makeLenses ''NetworkAttrbutes    
 
@@ -1034,7 +1053,7 @@ activateResearcher rap = do
                                     logInfo @String $ "Activated researcher with address: " ++ (show researcherAddress)
                                     logInfo @String $ "Researcher active with token: " ++ (show activateReTokenVal)
                         
-                       orefs  -> Contract.logError @String $ "Utxos not right!!" ++ show orefs  -- TODO: Better error message 
+                       orefs  -> Contract.logError @String $ "Utxos not right!!" ++ show orefs  -- TODO: handle for multiple txOrefs try using head
                 _ -> traceError "Didn't find appropriate datum"
 
 
