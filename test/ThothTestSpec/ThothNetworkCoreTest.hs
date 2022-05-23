@@ -38,6 +38,7 @@ import           Plutus.Contract.Test.Coverage
 import           Plutus.Contract.Test.Coverage.ReportCoverage (writeCoverageReport)
 
 import           ThothCore.ThothNetworkCore
+import           ThothCore.ThothResearcherCore
 import           Utils                      (unsafeTokenNameToHex)
 
 
@@ -96,23 +97,18 @@ testNetworkInit = runEmulatorTraceIO' def emCfg $ networkInitTrace
 networkAssetSymbol :: CurrencySymbol
 networkAssetSymbol = "ff"
 
-networkAssetToken :: TokenName
+networkAssetToken, conjureNetworkAssetTokenName, initializeNetworkAssetTokenName, activateNetworkAssetTokenName, activateResearcherAssetTokenName :: TokenName
 networkAssetToken = "THOTH"
-
-conjureNetworkAssetTokenName :: TokenName
 conjureNetworkAssetTokenName = "Conjure Thoth"
-
-initializeNetworkAssetTokenName :: TokenName
 initializeNetworkAssetTokenName = "Initialize Thoth"
-
-activateNetworkAssetTokenName :: TokenName
 activateNetworkAssetTokenName = "Thoth Activate"
+initializeResearcherAssetTokenName = "THOTH ONE"
+activateResearcherAssetTokenName = "Active Thoth Researcher"
 
-activateResearcherAssetTokenName :: TokenName
-activateResearcherAssetTokenName = "THOTH ONE"
 
-initNetworkParams :: BuiltinByteString
+initNetworkParams, researcherOneNickName :: BuiltinByteString
 initNetworkParams = "Thoth one"
+researcherOneNickName = "Serpent"
 
 
 networkInitTrace :: EmulatorTrace ()
@@ -182,34 +178,54 @@ networkInitTrace = do
                                 let reAddr            = mockWalletAddress w2
                                     activateDeadline = slotToEndPOSIXTime def 10
 
-                                let rap = ResearcherActivateParams
+                                let rap = ResearcherInitializeParams
                                             { activeNetworkAccessToken    = activeToken
                                             , activeNetworkScriptAddress  = scripAddress
                                             , activatingResearcherAddress = reAddr
-                                            , activeResearcherTokenName   = activateResearcherAssetTokenName
+                                            , activeResearcherTokenName   = initializeResearcherAssetTokenName
                                             , activateResearcherDeadline  = activateDeadline
                                             }
                                 
-                                h4 <- activateContractWallet w2 activateResearcherEndpoint
+                                h4 <- activateContractWallet w2 initializeResearcherEndpoint
                                 -- void $ Emulator.waitNSlots 5
-                                callEndpoint @"researcherActivate" h4 rap 
+                                callEndpoint @"researcherInitialize" h4 rap 
                                 void $ Emulator.waitNSlots 5
 
                                 let reAddr2            = mockWalletAddress w3
                                     activateDeadline = slotToEndPOSIXTime def 10
 
-                                let rap = ResearcherActivateParams
+                                let rip = ResearcherInitializeParams
                                             { activeNetworkAccessToken    = activeToken
                                             , activeNetworkScriptAddress  = scripAddress
                                             , activatingResearcherAddress = reAddr2
-                                            , activeResearcherTokenName   = activateResearcherAssetTokenName
+                                            , activeResearcherTokenName   = initializeResearcherAssetTokenName
                                             , activateResearcherDeadline  = activateDeadline
                                             }
                                 
-                                h5 <- activateContractWallet w3 activateResearcherEndpoint
+                                h5 <- activateContractWallet w3 initializeResearcherEndpoint
                                 -- void $ Emulator.waitNSlots 5
-                                callEndpoint @"researcherActivate" h5 rap 
+                                callEndpoint @"researcherInitialize" h5 rip 
                                 void $ Emulator.waitNSlots 5
+
+                                Last m <- observableState h4
+                                case m of 
+                                     Nothing -> Extras.logError $ "Error getting output from contract instance with attr: " ++ show rip
+                                     Just initReToken -> do 
+                                        Extras.logError $ "Initialized researcher with token: " ++ show initReToken
+
+                                        let reOneAddr = mockWalletAddress w2
+                                        let arp = ActivateResearcherParams
+                                                    { researcherNickName              = researcherOneNickName
+                                                    , researcherOwnAddress            = reOneAddr
+                                                    , initializedResearcherToken      = initReToken
+                                                    , contribAmount                   = 5_000_000
+                                                    , activateResearcherTokenName     = activateResearcherAssetTokenName
+                                                    , activateResearcherTokenAmount   = 2
+                                                    }
+
+                                        h6 <- activateContractWallet w2 activateResearcherEndpoint
+                                        callEndpoint @"activate_researcher" h6 arp
+                                        void $ Emulator.waitNSlots 10
 
                                 -- let reAddr1            = mockWalletAddress w1
                                 --     activateDeadline   = slotToEndPOSIXTime def 10

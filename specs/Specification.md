@@ -2,24 +2,25 @@
 
 This document contains the specifications for the Thoth Network protocol.
 
-The system is divided into two major parts. These include:
- -Thoth Network
- -Researcher State Machine
+The system is divided into three major parts. These include:
+ -Thoth Global Network Script
+ -Researcher Network Script
+ -Researcher Main Script
 
-## Thoth Network Contract
+## Thoth Network Script
 
-In this section we describe the workings of the main network contract. The main function of this part is to 'cordinate' the other distributed parts of the
-system. It will consist of:
+In this section we describe the workings of the global network script. The main function of this part is to hold the global state of knowledge of the network. It will consist of:
 
 - Functions that change the state.
 - The inititalization Function.
 - The data for the system
 - Interface for Interacting (i.e a way for people to know the state)
 - Validation for changes.
+- Minting the necessary tokens.
 
 ### Thoth Network Validation
 
-The function to start the network protocol will be of the following signature: `networkValidator :: ResearcherPkh -> DatumType -> TypedRedeemer -> Context -> Bool`
+The function to start the network protocol will be of the following signature: `networkValidator :: Address -> NetworkDatum -> NetworkRedeemer -> ScriptContext -> Bool`
 
 Let's go over the various parameters:
 

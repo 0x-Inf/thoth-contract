@@ -334,3 +334,32 @@ this would also come in handy in payouts after project completion or during the 
 by some signatories; also Accreditation can benefit from this especially high assurance credits where they are released if certain pkh have signed associated 
 transactions. Adding some item to a certain collection might also require signing off by the collection owners (in the case where there are multiple). Also 
 decisions to join fellowships (essentially getting an 'access' token) can be made by multiple parties. 
+
+
+dev notes (brief session + some earlier research) 14 May 2022
+  - Most of the che
+  - Don't remember what was about to write.
+
+some work done 15 May 2022
+  - Made the 'scafolding' for the researcher core file. Have good feeling about this one. 
+
+Some thoughts 20 May 2022
+  - There is a way in which the contributions can be seen as 'recipes' in the minecraft game (or rather the categorical representation). So when interacting 
+    with the network it's like creative mode but for real-life knowledge.
+  - Open spending to get data. i.e given a particular script at an address any wallet can spend a specified information token by given the correct redeemer etc.
+    This seems like it would be a good way to collate data.
+
+
+
+Development notes 22 May 2022
+  - The first iteration of the activate researcher action was done, this included minting some tokens and changing the datum.
+  - The next problem is figuring out how to handle contributions and rewards in a way that encodes the actions of the researchers on the network and also 
+    to their personal scripts. 
+  - The tokens 'interactions' (i.e spending and minting (Maybe burning)) should ensure that the knowledge tree is well represented; the idea is to have this 
+    last for a while and be truly universal. 
+  - We should be able to compose a researcher's contribution representation with another researcher's in a way that the composed object is also a valid 
+    knowledge representation (like the way the presentation about knowledge representation using petri nets) and also include the 'resultant knowledge' from 
+    interactions between the two researchers. 
+  - In a way the challenge is to take a resource theory and the dynamical systems collectives construction in Poly and merge it with a version of this petri 
+    net formalization.(There is a way to construct a petri net using props and props are used for circuit diagrams... certain knowledge is represented using 
+    a specific circuit diagram and one can combine or change the diagram (Maybe using the collective tools)).
