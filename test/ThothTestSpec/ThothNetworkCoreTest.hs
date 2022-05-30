@@ -97,13 +97,14 @@ testNetworkInit = runEmulatorTraceIO' def emCfg $ networkInitTrace
 networkAssetSymbol :: CurrencySymbol
 networkAssetSymbol = "ff"
 
-networkAssetToken, conjureNetworkAssetTokenName, initializeNetworkAssetTokenName, activateNetworkAssetTokenName, activateResearcherAssetTokenName :: TokenName
+networkAssetToken, conjureNetworkAssetTokenName, initializeNetworkAssetTokenName, activateNetworkAssetTokenName, activateResearcherAssetTokenName, researcherPageAssetTokeName :: TokenName
 networkAssetToken = "THOTH"
 conjureNetworkAssetTokenName = "Conjure Thoth"
 initializeNetworkAssetTokenName = "Initialize Thoth"
 activateNetworkAssetTokenName = "Thoth Activate"
 initializeResearcherAssetTokenName = "THOTH ONE"
 activateResearcherAssetTokenName = "Active Thoth Researcher"
+researcherPageAssetTokeName = "Thoth Page"
 
 
 initNetworkParams, researcherOneNickName :: BuiltinByteString
@@ -225,6 +226,43 @@ networkInitTrace = do
 
                                         h6 <- activateContractWallet w2 activateResearcherEndpoint
                                         callEndpoint @"activate_researcher" h6 arp
+                                        void $ Emulator.waitNSlots 10
+
+                                        Last m <- observableState h6 
+                                        case m of 
+                                            Nothing -> Extras.logError $ "Error getting output from contract instance with attr: " ++ show arp
+                                            Just (actReToken, reValAddr) -> do 
+                                                Extras.logError $ "Activated researcher with token: " ++ show actReToken
+
+                                                let crpp = CreateResearcherPageParams
+                                                                { researcherPageAddress       = reValAddr
+                                                                , researcherOwnWalletAddress  = reOneAddr
+                                                                , researcherPageTokenName     = researcherPageAssetTokeName
+                                                                , researcherActiveAccessToken = actReToken
+                                                                }
+                                                
+                                                h61 <- activateContractWallet w2 createResearcherPageEndpoint
+                                                callEndpoint @"create_researcher_page" h61 crpp
+                                                void $ Emulator.waitNSlots 5 
+                                        
+                                Last m1 <- observableState h5
+                                case m1 of 
+                                     Nothing -> Extras.logError $ "Error getting output from contract instance with attr: " ++ show rip
+                                     Just initReToken1 -> do 
+                                        Extras.logError $ "Initialized researcher with token: " ++ show initReToken1
+
+                                        let reTwoAddr = mockWalletAddress w3
+                                        let arp1 = ActivateResearcherParams
+                                                    { researcherNickName              = researcherOneNickName
+                                                    , researcherOwnAddress            = reTwoAddr
+                                                    , initializedResearcherToken      = initReToken1
+                                                    , contribAmount                   = 5_000_000
+                                                    , activateResearcherTokenName     = activateResearcherAssetTokenName
+                                                    , activateResearcherTokenAmount   = 2
+                                                    }
+
+                                        h7 <- activateContractWallet w3 activateResearcherEndpoint
+                                        callEndpoint @"activate_researcher" h7 arp1
                                         void $ Emulator.waitNSlots 10
 
                                 -- let reAddr1            = mockWalletAddress w1

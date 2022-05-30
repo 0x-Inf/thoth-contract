@@ -19,10 +19,12 @@ module ThothCore.ThothResearcherCore
     ( 
     -- * endpoints 
       activateResearcherEndpoint
+    , createResearcherPageEndpoint
     -- * Coverage Testing
     , researcherScriptCovIdx
     -- * researcher Activation parameters 
     , ActivateResearcherParams (..)
+    , CreateResearcherPageParams (..)
     ) where
 
 import           Control.Monad               hiding (fmap)
@@ -72,10 +74,10 @@ type AdaTxOutRef = TxOutRef
 {-# INLINABLE mkResearcherActivateTokenPolicy #-}
 mkResearcherActivateTokenPolicy :: Address -> AdaTxOutRef -> InitResTokenTxOutRef -> TokenName -> Integer ->  () -> ScriptContext -> Bool 
 mkResearcherActivateTokenPolicy addr adaOref initReTknOref tn amt () ctx = 
-    traceIfFalse "Not signed by correct pkh"         (checkSignature addr)  &&
-    traceIfFalse "Minted wrong amount"               checkMintedAmount      && 
-    traceIfFalse "Researcher ada token not consumed" hasResearcherAdaUtxo   &&
-    traceIfFalse "Active Network token not consumed" hasResearcherInitToken  
+    traceIfFalse "Not signed by correct pkh"          (checkSignature addr)  &&
+    traceIfFalse "Minted wrong amount"                checkMintedAmount      && 
+    traceIfFalse "Researcher ada token not consumed"  hasResearcherAdaUtxo   &&
+    traceIfFalse "Researcher Init token not consumed" hasResearcherInitToken  
 
   where 
       info :: TxInfo 
@@ -118,10 +120,57 @@ researcherActivateTokenPolicy addr adaOref initTknOref tn amt = mkMintingPolicyS
 researcherActivateTokenCurSym ::  Address -> AdaTxOutRef -> InitResTokenTxOutRef -> TokenName -> Integer -> CurrencySymbol
 researcherActivateTokenCurSym addr adaOref activeTknOref tn = scriptCurrencySymbol . researcherActivateTokenPolicy addr adaOref activeTknOref tn 
 
+
+type ActiveResTokenTxOutRef = TxOutRef
+
+{-# INLINABLE mkResearcherPageTokenPolicy #-}
+mkResearcherPageTokenPolicy :: Address -> ActiveResTokenTxOutRef -> TokenName -> Integer ->  () -> ScriptContext -> Bool 
+mkResearcherPageTokenPolicy addr actResTknOref tn amt () ctx = 
+    traceIfFalse "Not signed by correct pkh"            (checkSignature addr)  &&
+    traceIfFalse "Minted wrong amount"                  checkMintedAmount      &&
+    traceIfFalse "Active researcher token not consumed" hasResearcherActiveToken  
+  where 
+      info :: TxInfo 
+      info = scriptContextTxInfo ctx
+
+      addressPkh :: Address -> PubKeyHash
+      addressPkh addr'' = case toPubKeyHash addr'' of
+                                    Nothing   -> traceError "something went wrong with pkh retrieval"
+                                    Just pkh' -> pkh'
+
+      checkSignature :: Address -> Bool 
+      checkSignature addr' = txSignedBy info (addressPkh addr')
+
+      checkMintedAmount :: Bool                                                           -- TODO: Can use currencyValue and ownSymbol to get expected mint amount; this will remove the need for passing it in
+      checkMintedAmount = case flattenValue (txInfoMint info) of
+                                 [(_, tn', amt')] -> tn' == tn && amt' == amt && amt' == 1 
+
+      hasResearcherActiveToken :: Bool 
+      hasResearcherActiveToken = V.spendsOutput info (txOutRefId actResTknOref) (txOutRefIdx actResTknOref)
+
+
+
+-- | The minting policy for the token that identifies a researcher's page
+researcherPageTokenPolicy :: Address ->  ActiveResTokenTxOutRef -> TokenName -> Integer -> Scripts.MintingPolicy
+researcherPageTokenPolicy addr activeTknOref tn amt = mkMintingPolicyScript $ 
+    $$(PlutusTx.compile [|| \addr' activeTknOref' tn' amt' -> Scripts.wrapMintingPolicy $ mkResearcherPageTokenPolicy addr' activeTknOref' tn' amt' ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode addr
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode activeTknOref
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode tn
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode amt
+
+researcherPageTokenCurSym ::  Address -> ActiveResTokenTxOutRef -> TokenName -> Integer -> CurrencySymbol
+researcherPageTokenCurSym addr activeTknOref tn = scriptCurrencySymbol . researcherPageTokenPolicy addr activeTknOref tn 
+
+
 -- | The state of 'knowledge' of a researcher 
 data ResearcherState = 
     ResearcherState
-        { _researcherValidatorScriptAddress           :: Address
+        { _researcherValidatorScriptAddress  :: Address
         -- ^ The address of the researcher script where knowledge representations will be stored 
         , _researcherOwnedAddress            :: Address
         -- ^ The address of the researcher used mainly for validation  
@@ -138,13 +187,30 @@ data ResearcherState =
         -- This will follow the formalization of a collective from the category of Poly
         } deriving Show 
 
-
 makeLenses ''ResearcherState
 
 PlutusTx.makeLift ''ResearcherState
 PlutusTx.unstableMakeIsData ''ResearcherState
 
-data ResearcherDatum = Active ResearcherState 
+
+-- | The state of the researchers 'personal' page 
+data PageState = 
+    PageState
+        { pageIdentifierToken    :: AssetClass
+        -- ^ The token that will be used in the identification of the page 
+        , researcherAddress      :: Address
+        -- ^ The address for the researcher who owns this page
+        , researcherScripAddress :: Address 
+        -- ^ The address for the script that controls the researcher page 
+         }deriving Show 
+
+-- makeLenses ''PageState
+
+PlutusTx.makeLift ''PageState
+PlutusTx.unstableMakeIsData ''PageState
+
+
+data ResearcherDatum = Active (ResearcherState, Maybe PageState)
      deriving Show 
 
 PlutusTx.unstableMakeIsData ''ResearcherDatum   
@@ -157,9 +223,10 @@ PlutusTx.unstableMakeIsData ''PageOption
 
 type InitializedToken = AssetClass
 type ActivatedToken = AssetClass
+type EffortToken = AssetClass
 
 data ResearcherRedeemer = ActivateResearcher (PubKeyHash, ActivatedToken, InitializedToken, Integer)
-                        | Page PageOption
+                        | Page (PageOption, PubKeyHash, EffortToken)
                         | Problems 
                         | Conversations 
                         | Funding 
@@ -179,21 +246,43 @@ PlutusTx.unstableMakeIsData ''ResearcherRedeemer
 mkResearcherValidator :: Address -> ResearcherDatum -> ResearcherRedeemer -> ScriptContext -> Bool 
 mkResearcherValidator addr d r ctx = 
     case (d,r) of 
-         (Active resState, _) -> 
-             traceIfFalse "researcher address not in datum" (addr == _researcherOwnedAddress resState)             &&
+         (Active (resState, Nothing), _) ->   
+             traceIfFalse "researcher address not in datum" (addr == _researcherOwnedAddress resState)                 &&
              traceIfFalse "not signed by address pkh" (txSignedBy info (addressPkh addr))               
-         (Active resState, ActivateResearcher (pkh, actToken, initToken, contrAmt)) -> 
-             traceIfFalse "not signed by the correct pkh"                 (txSignedBy info pkh)                    && 
-             traceIfFalse "signing pkh does not match provided address"   (pkh == addressPkh addr)                 && 
-             traceIfFalse "activate token not transferred to researcher"  (activeTokenToResearcher pkh resState)   &&
-             traceIfFalse "activate token not locked in script"           (checkTokenInScript actToken)            && 
+         (Active (resState, Nothing), ActivateResearcher (pkh, actToken, initToken, contrAmt)) -> 
+             traceIfFalse "not signed by the correct pkh"                 (txSignedBy info pkh)                        && 
+             traceIfFalse "signing pkh does not match provided address"   (pkh == addressPkh addr)                     && 
+             traceIfFalse "pkh does not match datum record"               (pkh == (_researcherPkh resState))           &&
+             traceIfFalse "activate token not transferred to researcher"  (activeTokenToResearcher pkh resState)       &&
+             traceIfFalse "activate token not locked in script"           (checkTokenInScript actToken)                && 
              traceIfFalse "check if researcher has contributed some ada"  (checkAdaValueInScript contrAmt)
+         (Active (resState, pageState), Page (pageOption, pkh, pageToken))                                        -> 
+             case pageOption of 
+                  Create ->
+                      case pageState of 
+                           Nothing -> traceError "Page state not given"          -- TODO : mod this to only validate when there wasn't a previous pageState entry
+                           Just pState -> 
+                               traceIfFalse "not signed by the correct pkh"                    (txSignedBy info pkh)                         && 
+                               traceIfFalse "the validator address's pkh does not match"       (pkh == addressPkh addr)                      &&
+                               traceIfFalse "active researcher token not present in inputs"    (activeTokenInInputs resState)                &&
+                            --    traceIfFalse "Effort token not transefered to researcher"       (effortTokenToResearcher pkh resState)        &&
+                               traceIfFalse "Page token has not been send to script"           (checkTokenInScript pageToken)                 
+                            --    traceIfFalse "active token has not been returned to researcher" (activeTokenToResearcher pkh resState)
+
+                  Edit -> 
+                      case pageState of 
+                           Nothing -> traceError "Can't edit non-existent page state"
+                           Just pState -> 
+                               True  
          _               -> False 
 
 
   where 
       info :: TxInfo 
       info = scriptContextTxInfo ctx
+
+      ownInputs :: [TxInInfo]
+      ownInputs = txInfoInputs info 
 
       scriptOwnOutputs :: [(DatumHash, Value)]
       scriptOwnOutputs = scriptOutputsAt (ownHash ctx) info
@@ -205,15 +294,25 @@ mkResearcherValidator addr d r ctx =
       
       activeTokenToResearcher :: PubKeyHash -> ResearcherState -> Bool 
       activeTokenToResearcher pkh state = case _researcherActiveToken state of 
-                                               Nothing -> traceError ""
+                                               Nothing -> traceError "Couldn't find asset entry in datum state"
                                                Just actToken -> valuePaidTo info pkh `geq` assetClassValue (actToken) 1 
+
+      effortTokenToResearcher :: PubKeyHash -> ResearcherState -> Bool 
+      effortTokenToResearcher pkh state = case _researcherEffortToken state of 
+                                               Nothing -> traceError "Couldn't find asset entry in datum state"
+                                               Just effToken -> valuePaidTo info pkh `geq` assetClassValue (effToken) 1 
 
       checkTokenInScript :: AssetClass -> Bool 
       checkTokenInScript token = any (\_ -> True) [val `geq` assetClassValue token 1 | (dh, val) <- scriptOwnOutputs]
 
       checkAdaValueInScript :: Integer -> Bool 
       checkAdaValueInScript contrAmt' = valueLockedBy info (ownHash ctx) `geq` (lovelaceValueOf contrAmt')
-      
+
+      activeTokenInInputs :: ResearcherState -> Bool 
+      activeTokenInInputs state = case _researcherActiveToken state of 
+                                       Nothing -> traceError "could not find the asset"
+                                       Just actToken -> any (\val -> val `geq` assetClassValue actToken 1) [txOutValue $ txInInfoResolved inp  | inp <- ownInputs]
+   
 
 {- note [The forbidden Fruit] 
 
@@ -250,7 +349,8 @@ researcherScriptCovIdx :: CoverageIndex
 researcherScriptCovIdx = getCovIdx $$(PlutusTx.compile [|| mkResearcherValidator ||])
 
 type ThothResearcherSchema = 
-        Endpoint "activate_researcher" ActivateResearcherParams
+            Endpoint "activate_researcher"    ActivateResearcherParams
+        .\/ Endpoint "create_researcher_page" CreateResearcherPageParams
 
 data ActivateResearcherParams = 
     ActivateResearcherParams 
@@ -263,7 +363,7 @@ data ActivateResearcherParams =
         -- ^ Must be at least 2 
         } deriving (Show, Generic, FromJSON, ToJSON)
 
-activateResearcher :: forall w s . ActivateResearcherParams -> Contract w s Text () 
+activateResearcher :: forall w s . ActivateResearcherParams -> Contract (Last (AssetClass, Address)) s Text () 
 activateResearcher ActivateResearcherParams{..} = do 
     pkh <- Contract.ownPaymentPubKeyHash
     let researcherAddr    = researcherOwnAddress
@@ -295,7 +395,7 @@ activateResearcher ActivateResearcherParams{..} = do
                                      Constraints.otherScript (researcherValidator researcherAddr)                      <>
                                      Constraints.unspentOutputs (Map.singleton adaOref adaO)                           
                 let constraints    = Constraints.mustSpendPubKeyOutput adaOref                                         <>
-                                     Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active researcherState)) contribVal 
+                                     Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherState, Nothing))) contribVal 
                 adjustAndSubmitWith @ThothResearcher lookups constraints
 
                 logInfo @String $ "The researcher has contributed: " ++ (show contribVal)
@@ -322,11 +422,7 @@ activateResearcher ActivateResearcherParams{..} = do
                                             activateResearcherTValue          = Value.singleton activateResearcherTCurSym activateTokenName activateTokenAmt
                                             activateResearcherTAssetClass     = Value.assetClass activateResearcherTCurSym activateTokenName 
                                             researcherStateDatum              = case researcherDatum of 
-                                                                                     Active resState -> resState
-                                            -- researcherStateDatum              = case _ciTxOutDatum scrAdaO of 
-                                            --                                          Right d -> case PlutusTx.fromBuiltinData (PlutusTx.toBuiltinData d) of 
-                                            --                                                         --  Nothing -> do Contract.logError @String "Didn't get the datum!!"
-                                            --                                                          Just reState -> reState
+                                                                                     Active (resState, _ ) -> resState
                                             researcherStateDatum'             = researcherStateDatum & researcherActiveToken .~ (Just activateResearcherTAssetClass)
                                             activScriptSplit                  = case splitTokenVal activateResearcherTValue of 
                                                                                     Nothing -> Value.singleton activateResearcherTCurSym activateTokenName 1
@@ -343,13 +439,77 @@ activateResearcher ActivateResearcherParams{..} = do
                                                              Constraints.unspentOutputs (Map.singleton initOref initO) 
                                             constraints'   = Constraints.mustMintValue activateResearcherTValue                                                                          <>
                                                              Constraints.mustSpendPubKeyOutput initOref                                                                                  <> 
-                                                             Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active researcherStateDatum')) scriptValPkg          <>
+                                                             Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum', Nothing))) scriptValPkg          <>
                                                              Constraints.mustSpendScriptOutput scrAdaOref (Redeemer $ PlutusTx.toBuiltinData (ActivateResearcher ((unPaymentPubKeyHash pkh) ,activateResearcherTAssetClass, initAccessToken, contrAmt)))
                                         
                                         adjustAndSubmitWith @ThothResearcher lookups' constraints'
 
-                                        logInfo @String $ "minted researcher activate token with value: " ++ (show activateResearcherTValue)
+                                        logInfo @String $ "Minted researcher activate token with value: " ++ (show activateResearcherTValue)
+                                        tell $ Last $ Just (activateResearcherTAssetClass, resValAddr)
                      initOrefs -> do Contract.logError @String $ "Utxo set not right!!" ++ show initOrefs
+
+
+data CreateResearcherPageParams = 
+    CreateResearcherPageParams
+        { researcherPageAddress       :: Address 
+        -- ^ This is the same as the address for the validator script of the researcher.
+        , researcherOwnWalletAddress  :: Address 
+        -- ^ The address for the researcher
+        , researcherPageTokenName     :: TokenName 
+        -- ^ The token name for the identifier token of the page.
+        , researcherActiveAccessToken :: AssetClass
+        -- ^ The token that asserts that the researcher has been activated
+        } deriving (Show, Generic, FromJSON, ToJSON)
+
+createResearcherPage :: forall w s . CreateResearcherPageParams -> Contract w s Text ()
+createResearcherPage CreateResearcherPageParams{..} = do 
+    pkh <- Contract.ownPaymentPubKeyHash
+    Contract.logInfo @String $ "Researcher with pkh: " ++ (show pkh) ++ " has started page creation"
+    let pageAddress    = researcherPageAddress
+        researcherAddr = researcherOwnWalletAddress
+        pageTokenName  = researcherPageTokenName 
+        pageTokenAmt   = 1
+
+
+    activeTokenUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) researcherActiveAccessToken >= 1) <$> utxosAt pageAddress 
+    case Map.toList activeTokenUtxos of 
+         [(actOref, actO)] -> do 
+                Contract.logDebug @String $ printf "picked Utxo at" ++ (show actOref) ++ "with value" ++ (show $ _ciTxOutValue actO)
+                researcherDatum <- getResearcherDatum actO
+                let resPageTokenCurSym             = researcherPageTokenCurSym researcherAddr actOref pageTokenName pageTokenAmt
+                    resPageTokenMintPolicy         = researcherPageTokenPolicy researcherAddr actOref pageTokenName pageTokenAmt
+                    resPageTokenValue              = Value.singleton resPageTokenCurSym pageTokenName pageTokenAmt
+                    resPageTokenAssetClass         = Value.assetClass resPageTokenCurSym pageTokenName
+                    researcherStateDatum           = case researcherDatum of 
+                                                        Active (resState, _ ) -> resState
+                    --  researcherStateDatum'          = researcherStateDatum & researcherActiveToken .~ (Just activateResearcherTAssetClass)
+                    pageState                      = PageState
+                                                            { pageIdentifierToken    = resPageTokenAssetClass
+                                                            , researcherAddress      = researcherAddr
+                                                            , researcherScripAddress = pageAddress
+                                                            }
+                    pageState'                     = Just pageState
+                    pageOption                     = Create
+                    resValHash                     = case _ciTxOutValidator actO of 
+                                                          Left vh -> vh
+                                                          Right v -> validatorHash v
+                    valueFromScript                = _ciTxOutValue actO
+                    scriptValPkg                   = valueFromScript <> resPageTokenValue
+                let lookups     = Constraints.mintingPolicy resPageTokenMintPolicy                                  <>
+                                  Constraints.typedValidatorLookups (typedResearcherValidator researcherAddr)       <> 
+                                  Constraints.otherScript (researcherValidator researcherAddr)                      <>
+                                  Constraints.unspentOutputs (Map.singleton actOref actO)
+                    tx          = Constraints.mustMintValue  resPageTokenValue                                                                                                        <>
+                                  Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum, pageState'))) scriptValPkg               <>
+                                  Constraints.mustSpendScriptOutput actOref (Redeemer $ PlutusTx.toBuiltinData (Page (pageOption, (unPaymentPubKeyHash pkh), resPageTokenAssetClass)))
+
+                adjustAndSubmitWith @ThothResearcher lookups tx
+                logInfo @String $ "Minted researcher page ID token with value: " ++ (show resPageTokenValue)
+                                                   
+
+
+         actOrefs          -> do Contract.logError  @String $ "Utxo set not right!!" ++ show actOrefs
+
 
 getResearcherDatum :: ChainIndexTxOut -> Contract w s Text ResearcherDatum
 getResearcherDatum o =
@@ -369,5 +529,9 @@ getResearcherDatum o =
 
 
 
-activateResearcherEndpoint :: Contract () ThothResearcherSchema Text ()
+activateResearcherEndpoint :: Contract (Last (AssetClass, Address)) ThothResearcherSchema Text ()
 activateResearcherEndpoint = awaitPromise $ endpoint @"activate_researcher" $ \rap -> do activateResearcher rap 
+
+
+createResearcherPageEndpoint :: Contract () ThothResearcherSchema Text ()
+createResearcherPageEndpoint = awaitPromise $ endpoint @"create_researcher_page" $ \crpp -> do createResearcherPage crpp 

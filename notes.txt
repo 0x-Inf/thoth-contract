@@ -337,7 +337,7 @@ decisions to join fellowships (essentially getting an 'access' token) can be mad
 
 
 dev notes (brief session + some earlier research) 14 May 2022
-  - Most of the che
+  - Most of the checks for network validation are implemented and work as intended... (remembered this later)
   - Don't remember what was about to write.
 
 some work done 15 May 2022
@@ -363,3 +363,45 @@ Development notes 22 May 2022
   - In a way the challenge is to take a resource theory and the dynamical systems collectives construction in Poly and merge it with a version of this petri 
     net formalization.(There is a way to construct a petri net using props and props are used for circuit diagrams... certain knowledge is represented using 
     a specific circuit diagram and one can combine or change the diagram (Maybe using the collective tools)).
+
+Development notes 26 May 2022
+  - There was this idea of putting the several 'fns' of the network as separate scripts with validators where a researcher does actions from those 'global' 
+    scripts and then calls corresponding actions on their script to sync with relevant changes. This will require carefull consideration of how to implement these 
+    global scripts so as to minimize chances of utxo collisions and also fees. 
+  - The other way to do the above is to have each researcher have their own fns script and then within it have a 'sync' action that updates a global 'fns' script 
+  - We'll want to use the datum to calculate the amount of effort tokens to 'reward' creation and dissemination of knowledge. (Make it really hard to mint depending
+    on whether we are creating knowledge or copying it)
+  - Every action station could have its own 'mint'(MintingPolicy) which says how much the action contributes to the knowledge.... 
+
+Development notes 27 May 2022 
+  - For the representation of the knowledge tree in the scripts, we could have certain outputs to store in their datums the information about the current 
+    piece the script is holding and a pointer to another piece(or pieces depending on txSize limitations) that consistently 'join' with other parts in 
+    other scripts. The entire tree can then be created through off-chain  code by iterating on the current datumhashes to get new ones to get some more 
+    until there are no more references. 
+
+
+Development notes 29 May 2022 
+  - The structure described in the note above could be implemented using a traversal type of structure. where we have an ordering that is calculated based 
+    on some datum present in a script utxo, we could also go through it and 'mod' it. Since we can have polymorphic container then we can have different 
+    types. 
+  - Made the validator option of creating a page... still working out the particulars of the edit page. 
+
+
+Development notes 30 May 2022 
+  - Realized that one can use multiple datums on the same script (surprised that we hadn't noticed we could do this), check the uniswap implementation on 
+    plutus-use-cases for a good example.
+  - At some point soon we might have to formalize these notes (write tex code)
+  - Also since we have implemented most of what is required for the 'base' of the network, this is a good point in development to look back at what we 
+    have done and ensure that everything behaves as it's supposed to. We'll also need to rework areas of the design that don't conform to the implementation
+    and also use this base to (re)design the 'bulk'(i.e all the action spaces) of the network. 
+  - On working on the researcher page, we've realised that we need to go back to the design board and specify the page and interactions of a researcher and 
+    also other researchers with the page. 
+  - For the effort multiplier..., some action are going to include a flag which shows that the multiplier needs to be updated. For instance the create page 
+    action will mint an effort token and change the multiplier based on what it was before in the datum and the 'action value' of creating a researcher page.
+  - Made the initial steps for the researcher page interaction. 
+  - Find a way to separate the emulator traces for the network activities and the researcher script stuff.
+  - There is a weird thing that happens in the emulator trace 'tests' where a contract call is skipped. (It's badly nested so that might be the cause...)
+  - The build as of commit time works, although there are a few kinks to iron out. 
+  - Also think about how to collect data from distributed sources to form one unified view of all the data with certain guarantees such as temporal coherence,
+    dependency adherance (Where on source is 'derived' from another). This will be used in creating the universal knowledge tree from the researchers personal 
+    trees. 
