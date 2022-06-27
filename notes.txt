@@ -405,3 +405,34 @@ Development notes 30 May 2022
   - Also think about how to collect data from distributed sources to form one unified view of all the data with certain guarantees such as temporal coherence,
     dependency adherance (Where on source is 'derived' from another). This will be used in creating the universal knowledge tree from the researchers personal 
     trees. 
+  - Added some types for interacting with the researcher's page. Just from the ones we've written it seems the validator will have a lot of options... might need 
+    to start thinking about size limits etc... 
+
+
+Development notes 31 May 2022 
+  - While watching the video on collectives by spivak, there is this idea that has come to mind. Since we are modelling our network as a collective (in Poly), 
+    then we are using the contributions idea where the researchers contribute knowledge then the feedback from the overall network is distributed to the 
+    researchers in a way that respects their contribution. In particular we have the scripts for the researchers as the inner systems which output their 
+    positions and these are combined in some way to form the networks output, then upon getting input (basically interactions in the front-end) there could 
+    be a way the researcher could 'collect' the distributed feedbacks. 
+  - An interesting problem is what happens when the state (network position) changes before particular researchers collect their inputs.... 
+
+
+Implementation idea 22 Jun 2022 
+  - We could find a way to 'encode' propositions and proofs as asset classes in the cardano protocol. This would enable researcher's to 'attach' their work 
+    to the blockchain as assets. They could also be used in downstream tasks such as proposals for funding, composed papers, etc. 
+  - Mathematically this corresponds to finding a map between types since with dependent type systems (those underlying functional languages) propositions are types 
+    and also the AssetClass for the cardano blockchain is also a type. 
+
+Abstraction concept 27 Jun 2022
+  - There is certain construction that david spivak refers to as an olog that he uses as a way to structure knowledge. Given that our project is about knowledge 
+    representation, this could be a good way to check if indeed our platform is indeed a semantic representation of the world's knowledge. Could we find a suitable 
+    map between the formalization that our 'contract' provides and the olog construction. On the surface this seems like it would be possible, it's straightforward to 
+    find categorical representations of the plutus language and hence the kind of app made using it, it seems therefore that finding a map betweeen the two aforementioned 
+    constructions would follow easily. This is just a hand-wavy argument and further investigation would shed more light. 
+  - In reading further about why spivak came up with the concept of ologs, it seems that he was attempting something similar to what this project is about, he was trying 
+    to in his words "I hoped I could get real people to upload their ideas into what is now called the cloud." We are doing the same but we are trying to get people to 
+    put their knowledge to a blockchain, which is similar to a cloud but the data is available across the nodes that make up the network. 
+  - This is a finer point for development. In our design we have a interaction 'titled' conversation where people would be able to share knowledge with each other in a 
+    'quantifiable' way. Spivak uses a simplicial complex of ologs to talk about this sharing of knowledge. If we can find a way to relate our system to ologs 
+    then we can in principle find a simplicial complex of 'a part of our system' which would ideally correspond to the conversation interaction. 

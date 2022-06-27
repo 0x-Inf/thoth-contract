@@ -210,16 +210,33 @@ PlutusTx.makeLift ''PageState
 PlutusTx.unstableMakeIsData ''PageState
 
 
-data ResearcherDatum = Active (ResearcherState, Maybe PageState)
-     deriving Show 
+-- | This data type represents the contents of a researchers page 
+data PageEntry = Notes | Blog | Musings | Papers | Gallery | Code 
+    deriving Show 
 
-PlutusTx.unstableMakeIsData ''ResearcherDatum   
+PlutusTx.makeLift ''PageEntry
+PlutusTx.unstableMakeIsData ''PageEntry    
 
-data PageOption = Create | Edit 
-     deriving Show 
+-- | These are the actions a researcher can do when editing their page 
+data EditPageOption = Add PageEntry | Remove PageEntry | Modify PageEntry | CreateEntry 
+    deriving Show 
+
+PlutusTx.makeLift ''EditPageOption
+PlutusTx.unstableMakeIsData ''EditPageOption    
+
+-- | The 'high-level' actions a researcher can do on their page 
+data PageOption = Create | Edit EditPageOption
+    deriving Show 
 
 PlutusTx.makeLift ''PageOption
 PlutusTx.unstableMakeIsData ''PageOption
+
+
+data ResearcherDatum = Active (ResearcherState, Maybe PageState)
+    deriving Show 
+
+PlutusTx.unstableMakeIsData ''ResearcherDatum   
+
 
 type InitializedToken = AssetClass
 type ActivatedToken = AssetClass
@@ -269,7 +286,7 @@ mkResearcherValidator addr d r ctx =
                                traceIfFalse "Page token has not been send to script"           (checkTokenInScript pageToken)                 
                             --    traceIfFalse "active token has not been returned to researcher" (activeTokenToResearcher pkh resState)
 
-                  Edit -> 
+                  Edit editOption -> 
                       case pageState of 
                            Nothing -> traceError "Can't edit non-existent page state"
                            Just pState -> 
