@@ -121,6 +121,42 @@ researcherActivateTokenCurSym ::  Address -> AdaTxOutRef -> InitResTokenTxOutRef
 researcherActivateTokenCurSym addr adaOref activeTknOref tn = scriptCurrencySymbol . researcherActivateTokenPolicy addr adaOref activeTknOref tn 
 
 
+type ActionTokenTxOutRef = TxOutRef 
+
+{-# INLINABLE mkResearcherEffortTokenPolicy #-}
+-- | The minting policy for the effort token to be given to the researcher after valid research actions. see note on Effort for more.
+mkResearcherEffortTokenPolicy :: Address -> ActiveResTokenTxOutRef -> ActionTokenTxOutRef -> TokenName -> Integer ->  () -> ScriptContext -> Bool 
+mkResearcherEffortTokenPolicy addr actResTknOref resActionTknOref tn amt () ctx = True 
+
+
+researcherEffortTokenPolicy :: Address -> ActiveResTokenTxOutRef -> ActionTokenTxOutRef -> TokenName -> Integer ->  Scripts.MintingPolicy
+researcherEffortTokenPolicy addr activeTknOref actionTknOref tn amt = mkMintingPolicyScript $ 
+    $$(PlutusTx.compile [|| \addr' activeTknOref' actionTknOref' tn' amt' -> Scripts.wrapMintingPolicy $ mkResearcherEffortTokenPolicy addr' activeTknOref' actionTknOref' tn' amt' ||])
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode addr
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode activeTknOref
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode actionTknOref
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode tn
+    `PlutusTx.applyCode`
+    PlutusTx.liftCode amt
+
+researcherEffortTokenCurSym :: Address -> ActiveResTokenTxOutRef -> ActionTokenTxOutRef -> TokenName -> Integer -> CurrencySymbol
+researcherEffortTokenCurSym addr activeTknOref actionTknOref tn = scriptCurrencySymbol . researcherEffortTokenPolicy addr activeTknOref actionTknOref tn
+
+{- note  [Effort]
+
+The concept of effort is based on the idea of returns in the collective formalism of the researcher script.
+It is a universal way to acknowledge that a particular researcher has done the actions necessary to warrant them having 
+possession of the value of the effort token which will be both reflected in the utxo set of their script address and also the 
+datum of the relevant output. The semantics of the token is the value the researcher has brought to the thoth network. This value 
+will also be reflected in the global state of the network. The value of the effort token together with the actions that a researcher 
+does will be used in the calculation of the effort multiplier. 
+
+-}
+
 type ActiveResTokenTxOutRef = TxOutRef
 
 {-# INLINABLE mkResearcherPageTokenPolicy #-}
@@ -175,13 +211,17 @@ data ResearcherState =
         , _researcherOwnedAddress            :: Address
         -- ^ The address of the researcher used mainly for validation  
         , _researcherPkh                     :: PubKeyHash
-        -- ^ The address of the researcher
+        -- ^ The PublicKeyHash of the researcher
         , _researcherActiveToken             :: Maybe AssetClass
         -- ^ The token showing that the researcher is active
         , _researcherIdentifier              :: BuiltinByteString
-        -- ^ This is supposed to be a unique identifier for the researcher in human readable format
+        -- ^ This is supposed to be a unique identifier for the researcher in human readable format (not sure we should be storing it here!!)
         , _researcherEffortToken             :: Maybe AssetClass
-        -- ^ The reward token for contributing knowledge 
+        -- ^ The reward token for contributing knowledge.
+        -- This takes the form of a MultiAsset (if possible) with every knowledge action making it up.
+        , _researcherEfforValue              :: Maybe Value 
+        -- ^ The value of the reward the researcher gets on knowledge contribution.
+        -- This is made up of multiple AssetClasses deconstructed into their cs tn and amt. 
         , _researcherEffortMultiplier        :: Maybe Integer
         -- ^ This is a proxy for the history of past contributions which affect how future contributions are calculated.
         -- This will follow the formalization of a collective from the category of Poly
@@ -242,6 +282,8 @@ type InitializedToken = AssetClass
 type ActivatedToken = AssetClass
 type EffortToken = AssetClass
 
+-- | These are the actions of the researcher on their own script address. 
+--   They represent the semantics of the researcher in terms of knowledge creation and dissemination. 
 data ResearcherRedeemer = ActivateResearcher (PubKeyHash, ActivatedToken, InitializedToken, Integer)
                         | Page (PageOption, PubKeyHash, EffortToken)
                         | Problems 
@@ -405,6 +447,7 @@ activateResearcher ActivateResearcherParams{..} = do
                              , _researcherActiveToken            = Nothing
                              , _researcherIdentifier             = researcherId
                              , _researcherEffortToken            = Nothing
+                             , _researcherEfforValue             = Nothing 
                              , _researcherEffortMultiplier       = Nothing
                              }
 
@@ -413,7 +456,7 @@ activateResearcher ActivateResearcherParams{..} = do
                                      Constraints.unspentOutputs (Map.singleton adaOref adaO)                           
                 let constraints    = Constraints.mustSpendPubKeyOutput adaOref                                         <>
                                      Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherState, Nothing))) contribVal 
-                adjustAndSubmitWith @ThothResearcher lookups constraints
+                _ <- adjustAndSubmitWith @ThothResearcher lookups constraints
 
                 logInfo @String $ "The researcher has contributed: " ++ (show contribVal)
                 now <- currentTime
@@ -459,11 +502,12 @@ activateResearcher ActivateResearcherParams{..} = do
                                                              Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum', Nothing))) scriptValPkg          <>
                                                              Constraints.mustSpendScriptOutput scrAdaOref (Redeemer $ PlutusTx.toBuiltinData (ActivateResearcher ((unPaymentPubKeyHash pkh) ,activateResearcherTAssetClass, initAccessToken, contrAmt)))
                                         
-                                        adjustAndSubmitWith @ThothResearcher lookups' constraints'
+                                        _ <- adjustAndSubmitWith @ThothResearcher lookups' constraints'
 
                                         logInfo @String $ "Minted researcher activate token with value: " ++ (show activateResearcherTValue)
                                         tell $ Last $ Just (activateResearcherTAssetClass, resValAddr)
                      initOrefs -> do Contract.logError @String $ "Utxo set not right!!" ++ show initOrefs
+         adaInitOrefs -> do Contract.logError @String $ "Utxo set not right!!" ++ show adaInitOrefs
 
 
 data CreateResearcherPageParams = 
@@ -520,7 +564,7 @@ createResearcherPage CreateResearcherPageParams{..} = do
                                   Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum, pageState'))) scriptValPkg               <>
                                   Constraints.mustSpendScriptOutput actOref (Redeemer $ PlutusTx.toBuiltinData (Page (pageOption, (unPaymentPubKeyHash pkh), resPageTokenAssetClass)))
 
-                adjustAndSubmitWith @ThothResearcher lookups tx
+                _ <- adjustAndSubmitWith @ThothResearcher lookups tx
                 logInfo @String $ "Minted researcher page ID token with value: " ++ (show resPageTokenValue)
                                                    
 

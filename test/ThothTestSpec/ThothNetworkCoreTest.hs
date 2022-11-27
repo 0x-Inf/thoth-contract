@@ -109,7 +109,7 @@ researcherPageAssetTokeName = "Thoth Page"
 
 initNetworkParams, researcherOneNickName :: BuiltinByteString
 initNetworkParams = "Thoth one"
-researcherOneNickName = "Serpent"
+researcherOneNickName = "Sepiol"
 
 
 networkInitTrace :: EmulatorTrace ()
@@ -139,7 +139,7 @@ networkInitTrace = do
     case m of 
          Nothing -> Extras.logError $ "Error conjuring network with params: " ++ show cnp 
          Just (scriptAddress, spwnToken) -> do 
-             Extras.logError $ "Spawned network with token: " ++ show spwnToken
+             Extras.logError $ "Conjured network with token: " ++ show spwnToken
 
              let initTokenInitSupply = 2
                     

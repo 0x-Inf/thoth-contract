@@ -17,7 +17,7 @@ module ThothCore.ThothNetworkCore
     -- * Functionality for network Initialization        
       conjureThothNetwork
     , initEndpoints
-    , conjEndpoint
+    -- , conjEndpoint
     , activateEndpoint
     , initializeResearcherEndpoint
     -- * Coverage Testing
@@ -380,7 +380,17 @@ data NetworkAttrbutes = NetworkAttrbutes
 {- note [Initialization Tokens]
 
 It certainly seems that we might have redundant tokens here; we still don't have a compelling reason for their inclusion,
-and we could just remove some of them.
+and we could just remove some of them. This seems like it was an exercise in creating minting policies. So far we have 
+ - conjureNetworkToken : 
+ - spawnNetworkToken
+ - initializeNetworkToken
+ - activateNetworkToken
+On further investigation these seem reasonable. Also should add counters for the tokens.
+The way to implement a multiAsset token like structure is to use the fact that a Value can be a map of many currencySymbols with 
+various tokenNames and Amounts in each. 
+So at the final state of initialization, the scriptAddress will contain one value for the initialization set; which it does according to how the code 
+works as of 4/8/2022 and the initial Researcher should have the same. 
+
 -}
 
 makeLenses ''NetworkAttrbutes    
@@ -432,7 +442,7 @@ mkNetworkValidator rAddr d r ctx =
             traceIfFalse "Not signed by the authorized pubkeyhash"  (txSignedBy info (addressPkh rAddr))                   &&
             traceIfFalse "Script doesn't contain tribute Ada"       (checkScriptValueAfterTx attr)                         &&
             traceIfFalse "Didn't Mint atleast one spawn token"      (checkTokenInScript spwnToken)                         &&
-            traceIfFalse "Action count is beyond limit"             (checkCountDatum attr)                                 &&     -- This seems like a redundant check... Think about it
+            traceIfFalse "Action count is beyond limit"             (checkCountDatum attr)                                 &&     -- This seems like a redundant check... Think about it.. because we never increase it automatically
             traceIfFalse "Caller doen't have required token"        (checkInitInputsToken $ _conjureNetworkToken attr)     &&
             traceIfFalse "Datum Not updated with Network attr"      checkDataInOutDatum 
         (Spawned attr, InitializeNetwork (pkh, thothInitToken))          -> 
@@ -713,7 +723,7 @@ conjureThothNetwork cnp = do
                         { _researcherZeroAddress           = addr
                         , _thothNetworkScriptAddresss      = scriptAddress
                         , _conjureNetworkToken             = Value.assetClass conjCs conjTTn 
-                        , _conjureTributeAmount            = conjureNetworkTributeAmount cnp
+                        , _conjureTributeAmount            = conjTributeAmt
                         , _conjureActionCount              = 1
                         , _spawnNetworkToken               = Nothing 
                         , _initializeThothNetworkToken     = Nothing 
@@ -739,6 +749,7 @@ conjureThothNetwork cnp = do
                 adjustAndSubmitWith @ThothNetwork lookups constraints
                 -- ledgerTx <- submitTxConstraintsWith @ThothNetwork lookups tx
                 -- void $ awaitTxConfirmed $ getCardanoTxId ledgerTx
+
                 logInfo @String $ "Network has been conjured with address: " ++  (show scriptAddress)
                 logInfo @String $ "Researcher zero has minted conjure token: " ++  (show conjTVal)
                 now <- currentTime
@@ -764,7 +775,7 @@ conjureThothNetwork cnp = do
                                     Dead nattr'' -> do 
                                        logInfo @String "network has been conjured with datum"
                                        let conjTValue       = _ciTxOutValue conjTo
-                                           -- TODO: Maybe change this amount if necessary!
+                                           -- TODO: Maybe change this amount if necessary! i.e don't hardcode it
                                            spawnTAmnt       = 2 
                                            spawnTTn         = Value.tokenName "Spawn Thoth"
                                            spawnTCs         = networkSpawnTokenCurSymbol scriptAddress conjToref spawnTTn spawnTAmnt
@@ -1039,7 +1050,9 @@ initializeResearcher rip = do
                                                                           Nothing -> Value.singleton activateReTokenCurSym activeReTokenName 1
                                                                           Just s  -> snd s
                                         activeNTknVal              = _ciTxOutValue activeTknO
+                                        adaFromResearcherVal       = _ciTxOutValue rAdaTo
                                         activateReScriptValPkg     = activeNTknVal <> activeReScriptSplit
+                                        activateReResearcherValPkg = adaFromResearcherVal <> activeReResearcherSplit
                                         rZeroAddr                  = nattr ^. researcherZeroAddress
                                         netValHash                 = case _ciTxOutValidator activeTknO of 
                                                                           Left vh -> vh
@@ -1052,9 +1065,10 @@ initializeResearcher rip = do
                                         constraints = Constraints.mustMintValue activateReTokenVal                                   <>
                                                       Constraints.mustSpendPubKeyOutput rAdaToref                                    <>
                                                       Constraints.mustSpendScriptOutput activeTknOref (Redeemer $ PlutusTx.toBuiltinData (InitializeReseacher (researcherAddress, activateReTAssetClass)))  <>
+                                                    --   Constraints.mustPayToPubKey pkh activateReResearcherValPkg                                                                                               <>
                                                       Constraints.mustPayToOtherScript netValHash (Datum $ PlutusTx.toBuiltinData (Active nattr')) activateReScriptValPkg
 
-                                    adjustAndSubmitWith @ThothNetwork lookups constraints
+                                    _ <- adjustAndSubmitWith @ThothNetwork lookups constraints
                                     logInfo @String $ "Initialized researcher with address: " ++ (show researcherAddress)
                                     logInfo @String $ "Researcher active with token: " ++ (show activateReTokenVal)
                                     tell $ Last $ Just (activateReTAssetClass)
@@ -1069,8 +1083,8 @@ type ThothNetworkSchema =
     .\/ Endpoint "activate" NetworkActivateParams
     .\/ Endpoint "researcherInitialize" ResearcherInitializeParams
 
-conjEndpoint :: Contract (Last (Address, AssetClass)) ThothNetworkSchema Text ()
-conjEndpoint = awaitPromise $ endpoint @"conjure" $ \cnp -> do conjureThothNetwork cnp
+-- conjEndpoint :: Contract (Last (Address, AssetClass)) ThothNetworkSchema Text ()
+-- conjEndpoint = awaitPromise $ endpoint @"conjure" $ \cnp -> do conjureThothNetwork cnp
 
 initEndpoints :: Contract (Last (Address, AssetClass)) ThothNetworkSchema Text ()
 initEndpoints = awaitPromise $ (initialize `select` conjure) 

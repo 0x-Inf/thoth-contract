@@ -51,7 +51,7 @@ library
         Utils
       , ThothCore.ThothNetworkCore
       , ThothCore.ThothPAB
-      , Plutus.Contract.Test.Coverage.ReportCoverage
+      -- , Plutus.Contract.Test.Coverage.ReportCoverage
   hs-source-dirs:
       src
   build-depends:

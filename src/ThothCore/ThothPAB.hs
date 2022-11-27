@@ -44,3 +44,13 @@ exampleTP = Token.TokenParams
     , Token.tpAmount   = 123456
     , Token.tpToken    = "THOTH"
     }
+
+
+{- Note [Plutus PAB]
+
+Apparently the PAB is not a very good way to distribute plutus apps, this is according to lars in a Q&A session.
+We might need to find another way to make the contract available to users so as to enable them to make transactions which 
+activate endpoints for actions in the contract. 
+
+DQuadrant has a tool called quba 
+-}    

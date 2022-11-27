@@ -436,3 +436,30 @@ Abstraction concept 27 Jun 2022
   - This is a finer point for development. In our design we have a interaction 'titled' conversation where people would be able to share knowledge with each other in a 
     'quantifiable' way. Spivak uses a simplicial complex of ologs to talk about this sharing of knowledge. If we can find a way to relate our system to ologs 
     then we can in principle find a simplicial complex of 'a part of our system' which would ideally correspond to the conversation interaction. 
+  - The thing a about beauty driving creation, instead of goodness or truth. Is this a good thing to implement in our system? The value of aesthetic?
+  - Spivak says "I define ones knowledge to be accurate as the extent to which, when he uses this knowledge to direct his actions, he has good luck handling his worldly affairs." 
+    Here we replace actions with transactions as we are working in a blockchain context. Since transactions in this particular blockchain carry Utxos as inputs, this could 
+    represent the 'knowledge pieces' that drive the action(s) (transaction(s)).
+  - The olog formalism gives a restriction that we must find a 'common ground' in order to interact with someone, we are not sure if we should include this 
+    restriction when implementing the conversation interaction.(It's not particularly a technical issue, given that we are mostly implementing validators for transactions adding 
+    restrictions is kind of trivial(not really, but yes). The problem is that doing this might be in conflict with the Openness tenet). On the flip side this seems like a 
+    natural way to ensure organic growth of knowledge without too much 'trolling'. Further this is the sentiment given by spivak as he argues that since the accurate 
+    knowledge is what various people would interact with then, naturally truth would be upheld. We hope that he gives mathematical support for this argument as it would convince 
+    us to adopt the idea and also give justification for the system design. 
+
+Implementation thoughts 1 July 2022 
+  - We should be able to support 'machine' participation right from the design of the system. By machine participation we mean a scenario where we have enlisted 
+    computers to help explore the knowledge space and thus participate in the discovery of new knowledge. Since we can't assume that machines would be motivated by
+    the same things that we humans are motivated by, this would mean that the contribution and 'reward' mechanisms need to account for this. It's an interesting design 
+    and also technical problem of how to accomplish this, especially now where the 'thinking machines' we have now are not as capable as to warrant their inclusion 
+    in a knowledge system like the present one. 
+
+
+Development Notes 4 August 2022 
+  - There is an idea that maybe the blockchain queueing of transactions might help with the concurrency problem but I'm not sure how this would work. This 
+    doesn't necessarily get rid of the congestion problem. See previous ideas for inspiration on ways forward.
+  - Looked at the old code we had written and there was a problem with paying the initial researcher the activate Researcher token minted from the 
+    activate Researcher action of the network script. Essentially it leads to downward failure of the researcher transactions. 
+  - Find a way to use the new ScriptContext with the amount of gas fees the validating transaction pays. 
+  - The minting Policy for the effort Token is vacuous and doesn't carry any semantics
+  - We need to think about what it would take for a researcher to get the value of the effort token.
