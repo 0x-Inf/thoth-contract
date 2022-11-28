@@ -463,3 +463,14 @@ Development Notes 4 August 2022
   - Find a way to use the new ScriptContext with the amount of gas fees the validating transaction pays. 
   - The minting Policy for the effort Token is vacuous and doesn't carry any semantics
   - We need to think about what it would take for a researcher to get the value of the effort token.
+
+
+# After a long-ass break and adventures into the world of HoTT and Category Theory 
+
+Development Notes 28 Nov 2022 
+  - Updated some of the core code to include the latest Plutus V2 version 
+  - Had an interesting time in figuring out what some of the code was doing. This hints at a better way to document the code. The already existing documentation helped a bunch, highlighting further the importance of documenting code.
+  - The testing is really "rubbish"(Using Emulator traces....), please write more 'suitable' tests using specs and some of the testing libs we had seen earlier. 
+  - There seems to be a lot of repetitive patterns in the off-chain code, find a way to abstract this... not sure if state machines are perfomant enough to do this yet.
+  - There is a lot of work to be done still in the validators to better implement the semantics of the program. 
+  - Also read the researcher work ih heavily underdeveloped!!!

@@ -33,7 +33,7 @@ import           Data.Text                   (Text, pack)
 import           Data.Void                   (Void)
 import           GHC.Generics                (Generic)
 import qualified Data.OpenApi.Schema         as OpenApi
-import qualified Formatting                  as Formatting
+import qualified Formatting
 import           Plutus.Contract             as Contract
 import           Plutus.Contract.Wallet      (getUnspentOutput)
 import           Plutus.Contracts.Currency   as Currency
@@ -54,7 +54,7 @@ import           Utils                       (getCredentials, unsafeTokenNameToH
 -- make the validator and policy for initializing thoth network
 
 -- a sample of what the datum of the network(address containing multiple utxos) might be
-data ThothNetwork = ThothNetwork 
+data ThothNetwork = ThothNetwork
     { thothNetworkResearchers    :: ![PaymentPubKeyHash]
     , thothNetworkLastSync       :: !POSIXTime
     , thothNetworkAddress        :: !Address
@@ -62,25 +62,25 @@ data ThothNetwork = ThothNetwork
 
 -- The token policy for minting a thoth Token(Refine this)
 {-# INLINABLE mkTokenPolicy #-}
-mkTokenPolicy :: TxOutRef -> TokenName -> Integer -> () -> ScriptContext -> Bool 
+mkTokenPolicy :: TxOutRef -> TokenName -> Integer -> () -> ScriptContext -> Bool
 mkTokenPolicy oref tn amt () ctx = traceIfFalse "UTxo not consumed" hasUTxo             &&
                                    traceIfFalse "wrong amount minted" checkMintedAmount
-    where 
+    where
         info :: TxInfo
-        info = scriptContextTxInfo ctx 
-        
-        hasUTxo :: Bool 
+        info = scriptContextTxInfo ctx
+
+        hasUTxo :: Bool
         hasUTxo = any (\i -> txInInfoOutRef i == oref) $ txInfoInputs info
 
-        checkMintedAmount :: Bool 
-        checkMintedAmount = case flattenValue (txInfoMint info) of 
+        checkMintedAmount :: Bool
+        checkMintedAmount = case flattenValue (txInfoMint info) of
             [(_, tn', amt')] -> tn' == tn && amt' == amt
             _                -> False
 
 
 tokenPolicy :: TxOutRef -> TokenName -> Integer -> Scripts.MintingPolicy
-tokenPolicy oref tn amt = mkMintingPolicyScript $ 
-    $$(PlutusTx.compile [|| \oref' tn' amt' -> Scripts.wrapMintingPolicy $ mkTokenPolicy oref' tn' amt' ||])
+tokenPolicy oref tn amt = mkMintingPolicyScript $
+    $$(PlutusTx.compile [|| \oref' tn' amt' -> Scripts.mkUntypedMintingPolicy $ mkTokenPolicy oref' tn' amt' ||])
     `PlutusTx.applyCode`
     PlutusTx.liftCode oref
     `PlutusTx.applyCode`
@@ -88,11 +88,11 @@ tokenPolicy oref tn amt = mkMintingPolicyScript $
     `PlutusTx.applyCode`
     PlutusTx.liftCode amt
 
-tokenCurSymbol :: TxOutRef -> TokenName -> Integer -> CurrencySymbol 
-tokenCurSymbol oref tn = scriptCurrencySymbol . tokenPolicy oref tn 
+tokenCurSymbol :: TxOutRef -> TokenName -> Integer -> CurrencySymbol
+tokenCurSymbol oref tn = scriptCurrencySymbol . tokenPolicy oref tn
 
 
-data ThothOracle = ThothOracle 
+data ThothOracle = ThothOracle
     { oSymbol        :: !CurrencySymbol
     , oOperator      :: !PubKeyHash
     , oFee           :: !Integer
@@ -102,47 +102,47 @@ data ThothOracle = ThothOracle
 PlutusTx.makeLift ''ThothOracle
 
 data ThothOracleRedeemer = Sync | Use | Create
-    deriving Show 
+    deriving Show
 
 PlutusTx.unstableMakeIsData ''ThothOracleRedeemer
 
 {-# INLINABLE thothOracleTokenName#-}
-thothOracleTokenName :: TokenName 
-thothOracleTokenName = TokenName emptyByteString 
+thothOracleTokenName :: TokenName
+thothOracleTokenName = TokenName emptyByteString
 
 {-# INLINABLE thothOracleAsset #-}
 thothOracleAsset :: ThothOracle -> AssetClass
 thothOracleAsset oracle = AssetClass (oSymbol oracle, thothOracleTokenName)
 
 {-# INLINABLE thothOracleDatum #-}
-thothOracleDatum :: Maybe Datum -> Maybe BuiltinByteString 
-thothOracleDatum d = do  
-    Datum d  <- d 
+thothOracleDatum :: Maybe Datum -> Maybe BuiltinByteString
+thothOracleDatum d = do
+    Datum d  <- d
     PlutusTx.fromBuiltinData d
 
 {-# INLINABLE thothOracleValue #-}
 thothOracleValue :: TxOut -> (DatumHash -> Maybe Datum) -> Maybe Integer
-thothOracleValue o f = do 
-    dh      <- txOutDatum o 
-    Datum d <- f dh 
+thothOracleValue o f = do
+    dh      <- txOutDatum o
+    Datum d <- f dh
     PlutusTx.fromBuiltinData d
 
 {-# INLINABLE mkThothOracleValidator #-}
-mkThothOracleValidator :: ThothOracle -> BuiltinByteString -> ThothOracleRedeemer -> ScriptContext -> Bool 
-mkThothOracleValidator oracle bs r ctx = 
+mkThothOracleValidator :: ThothOracle -> BuiltinByteString -> ThothOracleRedeemer -> ScriptContext -> Bool
+mkThothOracleValidator oracle bs r ctx =
     traceIfFalse "token missing from input"  inputHasToken  &&
     traceIfFalse "token missing from output" outputHasToken &&
-    case r of 
+    case r of
         Sync    -> traceIfFalse "invalid output datum" validOutputDatum         &&
                    traceIfFalse "public key has not linked"  True
         Use     -> traceIfFalse "fees not paid"  feesPaid                       &&
                    traceIfFalse "oracle value changed" (outputDatum == Just bs)
-        Create  -> traceIfFalse "invalid output datum" validOutputDatum         && 
-                   traceIfFalse "fees not paid"  feesPaid                       
+        Create  -> traceIfFalse "invalid output datum" validOutputDatum         &&
+                   traceIfFalse "fees not paid"  feesPaid
 
   where
-    info :: TxInfo 
-    info = scriptContextTxInfo ctx 
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
 
     ownInput :: TxOut
     ownInput = case findOwnInput ctx of
@@ -155,13 +155,13 @@ mkThothOracleValidator oracle bs r ctx =
     ownOutput :: TxOut
     ownOutput = case getContinuingOutputs ctx of
         [o] -> o
-        _   -> traceError "expected exactly one oracle output" 
+        _   -> traceError "expected exactly one oracle output"
 
     outputHasToken :: Bool
     outputHasToken = assetClassValueOf (txOutValue ownOutput) (thothOracleAsset oracle) == 1
 
-    outputDatumhash :: DatumHash 
-    outputDatumhash = case txOutDatumHash ownOutput of 
+    outputDatumhash :: DatumHash
+    outputDatumhash = case txOutDatumHash ownOutput of
                             Nothing -> traceError "datumHash missing"
                             Just dh -> dh
 
@@ -183,37 +183,40 @@ mkThothOracleValidator oracle bs r ctx =
         outVal `geq` (inVal <> Ada.lovelaceValueOf (oFee oracle))
 
 data ThothOracling
-instance Scripts.ValidatorTypes ThothOracling where 
-    type instance DatumType ThothOracling = BuiltinByteString 
+instance Scripts.ValidatorTypes ThothOracling where
+    type instance DatumType ThothOracling = BuiltinByteString
     type instance RedeemerType ThothOracling = ThothOracleRedeemer
 
-typeThothOracleValidator :: ThothOracle -> Scripts.TypedValidator ThothOracling 
-typeThothOracleValidator oracle = Scripts.mkTypedValidator @ThothOracling 
+typeThothOracleValidator :: ThothOracle -> Scripts.TypedValidator ThothOracling
+typeThothOracleValidator oracle = Scripts.mkTypedValidator @ThothOracling
     ($$(PlutusTx.compile [|| mkThothOracleValidator ||]) `PlutusTx.applyCode` PlutusTx.liftCode oracle)
     $$(PlutusTx.compile [|| wrap ||])
-  where 
-    wrap = Scripts.wrapValidator @BuiltinByteString @ThothOracleRedeemer
+  where
+    wrap = Scripts.mkUntypedValidator @BuiltinByteString @ThothOracleRedeemer
 
-thothOracleValidator :: ThothOracle -> Validator 
-thothOracleValidator = Scripts.validatorScript . typeThothOracleValidator 
+thothOracleValidator :: ThothOracle -> Validator
+thothOracleValidator = Scripts.validatorScript . typeThothOracleValidator
+
+thothOracleValidatorHash :: ThothOracle -> ValidatorHash
+thothOracleValidatorHash = Scripts.validatorHash . typeThothOracleValidator
 
 thothOracleAddress :: ThothOracle -> Ledger.Address
-thothOracleAddress = scriptAddress . thothOracleValidator
+thothOracleAddress = scriptHashAddress . thothOracleValidatorHash
 
 data ThothOracleParams = ThothOracleParams
     { topFees    :: !Integer
     , topSymbol  :: !CurrencySymbol
     , topToken   :: !TokenName
-    , topAddress :: !Address 
+    , topAddress :: !Address
     } deriving (Show, Generic, FromJSON, ToJSON)
 
 
 
 startThothOracle :: forall w s. ThothOracleParams -> Contract w s Text ThothOracle
-startThothOracle top = do 
+startThothOracle top = do
     pkh <- Contract.ownPaymentPubKeyHash
     osc <- mapError (pack . show) (mintContract pkh [(thothOracleTokenName, 1)] :: Contract w s CurrencyError OneShotCurrency)
-    let cs  = Currency.currencySymbol osc 
+    let cs  = Currency.currencySymbol osc
         thothOracle = ThothOracle
             { oSymbol = cs
             , oOperator = unPaymentPubKeyHash pkh
@@ -224,18 +227,18 @@ startThothOracle top = do
     return thothOracle
 
 syncThothOracle :: forall w s. ThothOracle -> BuiltinByteString -> Contract w s Text ()
-syncThothOracle oracle bs = do 
+syncThothOracle oracle bs = do
     m <- findOracle oracle
     let c = Constraints.mustPayToTheScript bs $ assetClassValue (thothOracleAsset oracle) 1 <> lovelaceValueOf 2_000_000
-    case m of 
-        Nothing -> do 
+    case m of
+        Nothing -> do
             ledgerTx <- submitTxConstraints (typeThothOracleValidator oracle) c
             awaitTxConfirmed $ getCardanoTxId ledgerTx
             logInfo @String $ "set initial oracle value to " ++ show bs
-        Just (oref, o, _) -> do 
+        Just (oref, o, _) -> do
             let lookups = Constraints.unspentOutputs (Map.singleton oref o)                   <>
                           Constraints.typedValidatorLookups (typeThothOracleValidator oracle) <>
-                          Constraints.otherScript (thothOracleValidator oracle)
+                          Constraints.plutusV1OtherScript (thothOracleValidator oracle)
                 tx      = c <> Constraints.mustSpendScriptOutput oref (Redeemer $ PlutusTx.toBuiltinData Sync)
             ledgerTx <- submitTxConstraintsWith @ThothOracling lookups tx
             awaitTxConfirmed $ getCardanoTxId ledgerTx
@@ -244,34 +247,32 @@ syncThothOracle oracle bs = do
 
 
 findOracle :: forall w s. ThothOracle -> Contract w s Text (Maybe (TxOutRef, ChainIndexTxOut, BuiltinByteString))
-findOracle oracle = do 
+findOracle oracle = do
     utxos <- Map.filter f <$> utxosAt (thothOracleAddress oracle)
     return $ case Map.toList utxos of
-        [(oref, o)] -> do 
-            Datum d <- case _ciTxOutDatum o of
-                                Left _  -> Nothing 
-                                Right d -> Just d
-            bs <- PlutusTx.fromBuiltinData d 
+        [(oref, o)] -> do
+            Datum d <- snd $ _ciTxOutScriptDatum o
+            bs <- PlutusTx.fromBuiltinData d
             return (oref, o, bs)
         _           -> Nothing
-  where 
-    f :: ChainIndexTxOut -> Bool 
+  where
+    f :: ChainIndexTxOut -> Bool
     f o = assetClassValueOf (txOutValue $ toTxOut o) (thothOracleAsset oracle) == 1
 
 type ThothOracleSchema = Endpoint "sync" BuiltinByteString
 
 runThothOracle :: ThothOracleParams -> Contract (Last ThothOracle) ThothOracleSchema Text ()
-runThothOracle top = do 
-    thothOracle <- startThothOracle top 
+runThothOracle top = do
+    thothOracle <- startThothOracle top
     tell $ Last $ Just thothOracle
     go thothOracle
-  where 
-    go :: ThothOracle -> Contract (Last ThothOracle) ThothOracleSchema Text a 
-    go thothOracle = do 
+  where
+    go :: ThothOracle -> Contract (Last ThothOracle) ThothOracleSchema Text a
+    go thothOracle = do
         awaitPromise $ endpoint @"sync" $ syncThothOracle thothOracle
         go thothOracle
 
-    
+
 
 
 data TokenParams = TokenParams
@@ -285,18 +286,18 @@ adjustAndSubmitWith ::( PlutusTx.FromData  (Scripts.DatumType a)
                       , PlutusTx.ToData (Scripts.DatumType a)
                       , AsContractError e
                       )
-                    => ScriptLookups a 
+                    => ScriptLookups a
                     -> TxConstraints (Scripts.RedeemerType a) (Scripts.DatumType a)
                     -> Contract w s e CardanoTx
 
-adjustAndSubmitWith lookups constraints = do 
-    unbalanced <- adjustUnbalancedTx <$> mkTxConstraints lookups constraints 
+adjustAndSubmitWith lookups constraints = do
+    unbalanced <- mkTxConstraints lookups constraints
     Contract.logDebug @String $ printf "unbalanced: %s" $ show unbalanced
     unsigned <- balanceTx unbalanced
     Contract.logDebug @String $ printf "balanced: $s" $ show unsigned
-    signed <- submitBalancedTx unsigned 
-    Contract.logDebug @String $ printf "signed: %s" $ show signed 
-    return signed 
+    signed <- submitBalancedTx unsigned
+    Contract.logDebug @String $ printf "signed: %s" $ show signed
+    return signed
 
 adjustAndSubmit :: ( PlutusTx.FromData (Scripts.DatumType a)
                    , PlutusTx.ToData (Scripts.RedeemerType a)
@@ -306,32 +307,32 @@ adjustAndSubmit :: ( PlutusTx.FromData (Scripts.DatumType a)
                 => Scripts.TypedValidator a
                 -> TxConstraints (Scripts.RedeemerType a) (Scripts.DatumType a)
                 -> Contract w s e CardanoTx
-adjustAndSubmit inst = adjustAndSubmitWith $ Constraints.typedValidatorLookups inst 
+adjustAndSubmit inst = adjustAndSubmitWith $ Constraints.typedValidatorLookups inst
 
 mintThothToken :: TokenParams -> Contract w s Text CurrencySymbol
 mintThothToken tp = do
-    Contract.logDebug @String $ printf "started minting: " ++ show tp 
-    let addr = tpAddress tp 
-    case getCredentials addr of 
-        Nothing      -> Contract.throwError $ pack $ printf "expected pubkey address, but got" ++ (show addr)
+    Contract.logDebug @String $ printf "started minting: " ++ show tp
+    let addr = tpAddress tp
+    case getCredentials addr of
+        Nothing      -> Contract.throwError $ pack $ printf "expected pubkey address, but got" ++ show addr
         Just (x, my) -> do
             oref <- getUnspentOutput
-            o    <- fromJust <$> Contract.txOutFromRef oref 
-            Contract.logDebug @String $ printf "picked UTxo at" ++ (show oref) ++ "with value" ++ (show $ _ciTxOutValue o)
+            o    <- fromJust <$> Contract.txOutFromRef oref
+            Contract.logDebug @String $ printf "picked UTxo at" ++ show oref ++ "with value" ++ show (_ciTxOutValue o)
 
             let tn          = tpToken tp
-                amt         = tpAmount tp 
+                amt         = tpAmount tp
                 cs          = tokenCurSymbol oref tn amt
                 val         = Value.singleton cs tn amt
-                c           = case my of 
-                    Nothing -> Constraints.mustPayToPubKey x val 
-                    Just y  -> Constraints.mustPayToPubKeyAddress x y val 
-                lookups     = Constraints.mintingPolicy (tokenPolicy oref tn amt) <>
+                c           = case my of
+                    Nothing -> Constraints.mustPayToPubKey x val
+                    Just y  -> Constraints.mustPayToPubKeyAddress x y val
+                lookups     = Constraints.plutusV1MintingPolicy (tokenPolicy oref tn amt) <>
                               Constraints.unspentOutputs (Map.singleton oref o)
                 constraints = Constraints.mustMintValue val          <>
                               Constraints.mustSpendPubKeyOutput oref <>
                               c
 
             void $ adjustAndSubmitWith @Void lookups constraints
-            Contract.logInfo @String $ printf "minted " ++ (show val)
+            Contract.logInfo @String $ printf "minted " ++ show val
             return cs
