@@ -38,7 +38,7 @@ import           Plutus.Contract.Test.Coverage
 -- import           Plutus.Contract.Test.Coverage.ReportCoverage (writeCoverageReport)
 
 import           ThothCore.ThothNetworkCore
--- import           ThothCore.ThothResearcherCore
+import           ThothCore.ThothResearcherCore
 -- import           Utils                      (unsafeTokenNameToHex)
 
 
@@ -83,10 +83,12 @@ myPredicate =
 
 
 emCfg :: EmulatorConfig
-emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v), (knownWallet 2 , v), (knownWallet 3 , v)]) def def 
+emCfg = EmulatorConfig (Left $  Map.fromList [(knownWallet 1, v1), (knownWallet 2 , v2), (knownWallet 3 , v3)]) def  
     where
-        v :: Value 
-        v = Ada.lovelaceValueOf 100_000_000
+        v1,v2,v3 :: Value 
+        v1 = Ada.lovelaceValueOf 100_000_000
+        v2 = Ada.lovelaceValueOf 100_000_000
+        v3 = Ada.lovelaceValueOf 100_000_000
 
 
 testNetworkInit :: IO () 
@@ -118,7 +120,8 @@ networkInitTrace = do
         w2 = knownWallet 2
         w3 = knownWallet 3
         addr = mockWalletAddress w1
-        tributeAmount        = 15_000_000
+        tributeAmount          = 15_000_000
+        spawnTokenAmount       = 2
         networkTokenInitSupply = 100_000_000 -- TODO : this should be calculated to induce the whole 'hopping concurrency shnit' in the off-chain code
         initDeadline = slotToEndPOSIXTime def 10
         initTokenAmount = 8
@@ -129,6 +132,7 @@ networkInitTrace = do
                 , conjureNetworkTributeAmount  = tributeAmount
                 , conjureNetworkTokenName      = conjureNetworkAssetTokenName
                 , conjureNetworkDeadline       = initDeadline
+                , spawnNetworkTokenAmount      = spawnTokenAmount
                 }
 
     h1 <- activateContractWallet w1 initEndpoints

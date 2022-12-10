@@ -1,7 +1,7 @@
 Thoth designing, planning and development:
 
 We've realized much later (date of this edit) that this whole thing is really about bringing science to everyone and enable participation from 
-everyone essentially (obviosly this may not be achieved in practice) it's the p.c revolution but with the science (from the internet). 
+everyone essentially (obviously this may not be achieved in practice) it's the p.c revolution but with science (from the internet). 
 
 Some Tenets to keep in mind during design
  - Openness
@@ -31,15 +31,17 @@ Thoth Development:
 
 The development will occur during several phases:
 
- - Developing and testing the contract in cardano blockchain 
- - Developing and testing the User application ('Wallet' on top of 'wallet'), i,e weirdly interfaced wallet  
+ - Developing and testing the contract in cardano blockchain.
+ - Developing and testing the User application i,e weirdly interfaced web app.
  - Extending the contract to other blockchains (i.e E.V.Ms, Algorand, Tron, Tezos, Klatyn)
 
 
 Some ideas on imlementation
  - We'll have that each 'researcher' have a page (this might correspond to a script address with collection of tokens and datum representing the work)
+   later: The datum is really for specifying how other researchers can interact with the work represented by the tokens (Maybe script addresses).
  - The overall Thoth page (basically the knowledge) will consist of two parts, the page itself which will host the main Thoth token (Multi asset token)
    and an oracle which would provide a datum for a 'knowledge value' and  every time a change happens it updates this value. (The researcher will reference this value for any transaction)
+   later: See in development notes how the networkCore differs from the above.
  - This knowledge value will also be used for the 'energy platform updates' which happen at 'every epoch' where the values of researcher's work is mappended by a multiplier (this would represent how valuable this work is to the knowledge) 
     (one can think about this as a sun and a planet with life forms where the life form that 'converts the most information' is 'winning')
  - Every researcher's page would drive what the researcher would see on the front end (i.e It would be a different interface (except for common platform elements)) 
@@ -48,9 +50,21 @@ Some ideas on imlementation
    It's sort of like the State Monad but instead of the context being a computation, it's a ____ ('knowledge representation')
 
 A note about plutus This is nothing else than a state machine, where our datum represents the state and the redeemer the state transition. Expanding this 
-to our optics look on bidirectional processes 
+to our optics look on bidirectional processes would imply that there is some information which will be relevant to the current state of the script token 
+which can be found in the future, since during validation we have the value of the outputs both before and after the transaction this can be implemented 
+'trivially' in the network. 
 
-The front-end would be displaying some datum which is found by consuming transaction.
+The front-end would be displaying some datum which is found by consuming transaction. We might have to jump through some hoops to get to the datum in the off-chain code, particularly 
+if we are in the midst of constructing some transactions.
+
+Random Idea: It occurred to us that the whole reason consensus protocols reduce the incentive to cheat (or act in ways that harm others) is through monetary 
+penalties, this is because there is a mapping between the consensus 'reward' tokens and 'real-world' monetary measures. This gives a market driven valuation on 
+the penalties one might incur if they don't act in accordance with the protocol ways. Given this, we can acsertain that there will be fluctuasions on how much 
+actual real life damages a rogue actor might incur. This brings up an interesting question on how to effectively guard this using formal mean more precisely, 
+Is there a formal construction to specify damages such that they are robust to 'real-world' changes? A naive way to do this would be to assume that there is no 
+mapping between the reward token and any real-world entities, i.e the only thing that exists is the reward token itself. This could work in that ideal world 
+we have painted above but as it stands this is not the case, hence a more nuanced approach is required. This is an interesting problem and well worth the effort.
+
 
 To minmize the transaction costs involved we'll try and minimize the tokens send (<= min-tr-fee) by using a single native asset when using the front-end, 
 this means that we need a way to store what changes can happen to utxos and mappend them to one token. 
@@ -121,7 +135,10 @@ organisms on earth) ... P.s This could be a blog-post (Just a rant about plutus,
 -- On a cool tangent, we can have people mint 'park' tokens only when they have 'spend' some 'effort' tokens. An analog to this in a money system where 
 there is money available to be minted (but with a limiting fn) so in our case the fn is checking some parameters such as supply, flux, easing coeff, etc 
 Put another way, the more effort you've put, the more you can mint and hence 'expand' your interface. But even with no effort one can mint but only 
-limitedly
+limitedly. Much much later: Actually for the sake of network semantics, a researcher who has contributed more and has gained tokens representing his 
+contributions simply uses the tokens to interact with the 'knowledge spheres' in which he has contributed. For instance in the real world if one doesn't know about 
+a topic in say chemical engineering they first have to interact with some information on chemical engineering and then with this get an 'interface' to interact with 
+other areas and people involved in chemical engineering.
 
 The thothCore will grow its number of utxos over time, so they'll be a lot of value locked in the address(es). We can use this value as a fund to make 
 some operations in the network cheaper (already paid for, this will probably include minting transactions which deposit the token in the script address).
@@ -193,7 +210,7 @@ concurrency is both in the 'network' level and also at the 'researcher' level.
  -- ALso we need a scheme for deriving assetclasses from already existing ones so as to start creating a 'trail' of tokens so as to record activity. 
     This could also be used with some datum for some tokens in the script address so as to 'consider' more information. 
  -- Start thinking of ways to prevent pkhs to willy nilly intialize other networks, only make it so that the network can be initialized only once. (probably
-    would involve the validator... obviosly)
+    would involve the validator... obviously)
  -- Since we need to record 'new knowledge' and also the 'propagation' of it, in these initialization step we consider having a universal 'Effort/knowledge' 
     token which is sent to contributing addresses after they have changed the state of the 'network' validator.
  -- Think more on the concurrency 'hack' especially as we draw closer to implimenting initResearcher redeemer and the transaction involved. 
@@ -206,8 +223,8 @@ concurrency is both in the 'network' level and also at the 'researcher' level.
  -- Keep in mind how the off-chain part would be interacting with the front facing part of the 'platform'
  -- There was an error and also hafly implemented fns that need to be reworked and as always optimization when we stopped coding on 10 th. 
  -- The validator is starting to look huge and we've only done two transitions, think of other ways to get the same functionality using Maybe different network 
-    Validators for different 'classes' of acitivity, or a good set of checks that gives the same gurantees but with fewer computations 
- -- Remember memory and compute are factors when dealing with the validator, we should aim to make it as optimized as possible. 
+    Validators for different 'classes' of activity, or a good set of checks that gives the same gurantees but with fewer computations. 
+ -- Remember memory and compute are factors when dealing with the validator, we should aim to make it as optimized as possible. (Don't optimize prematurely)
  -- We need to put some thought into the minting policies of the tokens involved in the initialization process. The current implementation only contains some 
     simple rules, which are not particularly informative about what the network is trying to achieve.
 

@@ -304,7 +304,7 @@ PlutusTx.unstableMakeIsData ''ResearcherRedeemer
 
 
 {-# INLINABLE mkResearcherValidator #-}
--- | The researcher validator, controls how a researcher can spend tokens in their script address 
+-- | The researcher validator, controls how a researcher can spend tokens in their script address, or how other researchers can spend outputs of other researchers
 mkResearcherValidator :: Address -> ResearcherDatum -> ResearcherRedeemer -> ScriptContext -> Bool
 mkResearcherValidator addr d r ctx =
     case (d,r) of
@@ -430,7 +430,7 @@ data ActivateResearcherParams =
 
 activateResearcher :: forall w s . ActivateResearcherParams -> Contract (Last (AssetClass, Address)) s Text ()
 activateResearcher ActivateResearcherParams{..} = do
-    pkh <- Contract.ownPaymentPubKeyHash
+    pkh <- Contract.ownFirstPaymentPubKeyHash
     let researcherAddr    = researcherOwnAddress
         researcherId      = researcherNickName
         contrAmt          = contribAmount
@@ -530,7 +530,7 @@ data CreateResearcherPageParams =
 
 createResearcherPage :: forall w s . CreateResearcherPageParams -> Contract w s Text ()
 createResearcherPage CreateResearcherPageParams{..} = do
-    pkh <- Contract.ownPaymentPubKeyHash
+    pkh <- Contract.ownFirstPaymentPubKeyHash
     Contract.logInfo @String $ "Researcher with pkh: " ++ show pkh ++ " has started page creation"
     let pageAddress    = researcherPageAddress
         researcherAddr = researcherOwnWalletAddress
