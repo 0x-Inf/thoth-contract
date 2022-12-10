@@ -1,4 +1,4 @@
-Thoth designing and planning:
+Thoth designing, planning and development:
 
 We've realized much later (date of this edit) that this whole thing is really about bringing science to everyone and enable participation from 
 everyone essentially (obviosly this may not be achieved in practice) it's the p.c revolution but with the science (from the internet). 
@@ -474,3 +474,10 @@ Development Notes 28 Nov 2022
   - There seems to be a lot of repetitive patterns in the off-chain code, find a way to abstract this... not sure if state machines are perfomant enough to do this yet.
   - There is a lot of work to be done still in the validators to better implement the semantics of the program. 
   - Also read the researcher work ih heavily underdeveloped!!!
+
+
+Development Notes 5 Dec 2022
+  - We have recently come across an article that says that a script address could potentially hold UTXOs with different datums. This was somehow missed before
+    Unless we've momentarily only forgot about it. So this makes the design of the contract more interesting and potentially smaller than we had previously 
+    thought. 
+  - Think about time tokens and how they can be used in the Thoth Protocol. For definition(#Stolen)A time token can only be created if its asset name is a timestamp that is after the validation range upper bound.

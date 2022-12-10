@@ -35,11 +35,11 @@ import           Prelude                    (IO, Semigroup (..), Show (..))
 import           Wallet.Emulator.Wallet
 import           Plutus.Contract.Test
 import           Plutus.Contract.Test.Coverage 
-import           Plutus.Contract.Test.Coverage.ReportCoverage (writeCoverageReport)
+-- import           Plutus.Contract.Test.Coverage.ReportCoverage (writeCoverageReport)
 
 import           ThothCore.ThothNetworkCore
-import           ThothCore.ThothResearcherCore
-import           Utils                      (unsafeTokenNameToHex)
+-- import           ThothCore.ThothResearcherCore
+-- import           Utils                      (unsafeTokenNameToHex)
 
 
 

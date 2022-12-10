@@ -31,7 +31,7 @@ import           Control.Monad               hiding (fmap)
 import           Control.Lens                hiding (contains, to)
 import           Data.Aeson                  (FromJSON, ToJSON)
 import qualified Data.Map                    as Map
-import           Data.Maybe                  (fromJust, fromMaybe)
+import           Data.Maybe                  as Maybe
 import           Data.Monoid                 (Last (..))
 import           Data.OpenApi.Schema         (ToSchema)
 import           Data.Text                   (Text, pack)
@@ -55,7 +55,8 @@ import qualified Ledger.Typed.Scripts        as Scripts
 import           Ledger.Ada                  as Ada
 import           Ledger.Value                as Value
 import           Ledger.Constraints          as Constraints
-import qualified Plutus.V1.Ledger.Contexts as V
+import qualified Plutus.V1.Ledger.Contexts   as V
+import qualified Plutus.V2.Ledger.Api        as V2API
 import           Prelude                     (Semigroup (..), Show (..), String, fromIntegral, div)
 import qualified Prelude
 import qualified PlutusPrelude               as PlPrelude
@@ -66,6 +67,8 @@ import           Text.Printf                 (printf)
 -- import           Utils                       (getCredentials, unsafeTokenNameToHex)
 
 import           ThothCore.ThothNetworkCore
+import qualified Plutus.V1.Ledger.Api as V2API
+import qualified Plutus.V1.Ledger.Api as V2API
 
 
 type InitResTokenTxOutRef = TxOutRef
@@ -538,7 +541,7 @@ createResearcherPage CreateResearcherPageParams{..} = do
     activeTokenUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) researcherActiveAccessToken >= 1) <$> utxosAt pageAddress
     case Map.toList activeTokenUtxos of
          [(actOref, actO)] -> do
-                Contract.logDebug @String $ printf "picked Utxo at" ++ show actOref ++ "with value" ++ show $ _ciTxOutValue actO
+                Contract.logDebug @String $ "picked Utxo at" ++ show actOref ++ "with value" ++ (show $ _ciTxOutValue actO)
                 researcherDatum <- getResearcherDatum actO
                 let resPageTokenCurSym             = researcherPageTokenCurSym researcherAddr actOref pageTokenName pageTokenAmt
                     resPageTokenMintPolicy         = researcherPageTokenPolicy researcherAddr actOref pageTokenName pageTokenAmt
@@ -579,16 +582,20 @@ getResearcherDatum o =
       PublicKeyChainIndexTxOut {} ->
         throwError "no datum for a txout of a public key address"
       ScriptChainIndexTxOut { _ciTxOutScriptDatum } -> do
-        (Datum e) <- snd _ciTxOutScriptDatum
-        maybe (throwError "datum hash wrong type")
-              pure
-              (PlutusTx.fromBuiltinData e)
-  where
-    getDatum :: DatumHash -> Contract w s Text Datum
-    getDatum dh =
-      datumFromHash dh >>= \case Nothing -> throwError "datum not found"
-                                 Just d  -> pure d
+        pure $ Maybe.fromJust $ V2API.fromBuiltinData $ V2API.toBuiltinData $ Maybe.fromJust $ snd _ciTxOutScriptDatum
+        -- getDatum dh
+        -- pure $ Maybe.fromJust $ V2API.fromBuiltinData e
 
+        -- maybe (throwError "datum hash wrong type")
+        --       pure
+        --       (PlutusTx.fromBuiltinData e)
+--   where
+--     getDatum :: DatumHash -> Contract w s Text Datum
+--     getDatum dh =
+--       datumFromHash dh >>= \case Nothing -> throwError "datum not found"
+                                --  Just d  -> pure d
+
+-- | TODO: You could move the getResearcherDatum to on-chain code with the new types in Plutus
 
 
 activateResearcherEndpoint :: Contract (Last (AssetClass, Address)) ThothResearcherSchema Text ()

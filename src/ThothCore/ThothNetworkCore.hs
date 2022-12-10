@@ -26,6 +26,8 @@ module ThothCore.ThothNetworkCore
     , splitTokenVal
     , adjustAndSubmitWith
     , waitUnitlTimeHasPassed
+    -- * Script Functions 
+    , networkScriptAsCbor
     -- * Initialization Parameters
     , ConjureNetworkParams (..)
     , NetworkInitializeParams (..)
@@ -42,6 +44,9 @@ import           Data.Monoid                 (Last (..))
 import           Data.OpenApi.Schema         (ToSchema)
 import           Data.Text                   (Text, pack)
 import qualified Data.ByteString.Char8       as BsChar8
+import qualified Data.ByteString.Lazy        as LB
+import qualified Data.ByteString.Short       as SBS
+import           Codec.Serialise             ( serialise )
 import           Data.Void                   (Void)
 import           GHC.Generics                (Generic)
 import qualified Data.OpenApi.Schema         as OpenApi
@@ -69,7 +74,8 @@ import qualified PlutusTx.Prelude            as PlTxPrelude
 import qualified PlutusTx.Ratio              as PlRatio
 import           PlutusTx.Builtins.Internal  (BuiltinByteString (..))
 import           Text.Printf                 (printf)
-import Cardano.Api (serialiseToRawBytesHex, deserialiseFromRawBytes, AsType (AsAssetName))
+import           Cardano.Api                 (serialiseToRawBytesHex, deserialiseFromRawBytes, AsType (AsAssetName), PlutusScript, PlutusScriptV2)
+import           Cardano.Api.Shelley hiding  (Address, TxOut, Value)
 
 -- import           Utils                       (getCredentials, unsafeTokenNameToHex)
 
@@ -462,12 +468,12 @@ mkNetworkValidator rAddr d r ctx =
             traceIfFalse "Check if the datum has been set"          checkIfDatumIsSet                         &&
             traceIfFalse "Value is not coherent across tx"          (checkScriptValueCoherence attr)          &&
             traceIfFalse "Active Token not send to script"          (checkTokenInScript activateToken)
-        (Active attr, InitializeReseacher (rAddr, reInitToken)) ->
-            traceIfFalse "Not signed by the valid pubkeyhash"       (txSignedBy info (addressPkh rAddr))            &&
-            traceIfFalse "researcherToken not send to researcher"   (checkRInitTokenToResearcher rAddr reInitToken) &&
-            traceIfFalse "researcherToken not in script"            (checkTokenInScript reInitToken)                &&
-            traceIfFalse "researcher has already activated"         (checkResearcherAlreadyActive)                  &&
-            traceIfFalse "Active token not in inputs"               (checkActiveTokenInInput attr)                  &&
+        (Active attr, InitializeReseacher (rDatAddr, reInitToken)) ->
+            traceIfFalse "Not signed by the valid pubkeyhash"       (txSignedBy info (addressPkh rDatAddr))            &&
+            traceIfFalse "researcherToken not send to researcher"   (checkRInitTokenToResearcher rDatAddr reInitToken) &&
+            traceIfFalse "researcherToken not in script"            (checkTokenInScript reInitToken)                   &&
+            traceIfFalse "researcher has already activated"         (checkResearcherAlreadyActive)                     &&
+            traceIfFalse "Active token not in inputs"               (checkActiveTokenInInput attr)                     &&
             traceIfFalse "Active Tokens not increased!"             (checkActiveTokenAmtAft attr)
         _                                         -> False
 
@@ -635,6 +641,18 @@ networkValidatorHash = Scripts.validatorHash . typedNetworkValidator
 
 networkAddress :: Address -> Ledger.Address
 networkAddress = scriptHashAddress . networkValidatorHash
+
+networkScript :: Address -> Ledger.Script 
+networkScript = Ledger.unValidatorScript . networkValidator
+
+networkScriptAsCbor :: Address -> LB.ByteString
+networkScriptAsCbor = serialise . networkValidator
+
+networkScriptAsShortBs :: Address -> SBS.ShortByteString
+networkScriptAsShortBs = SBS.toShort . LB.toStrict . serialise . networkScript
+
+apiNetworkScript :: Address -> PlutusScript PlutusScriptV2
+apiNetworkScript = PlutusScriptSerialised . networkScriptAsShortBs
 
 networkCovIdx :: CoverageIndex
 networkCovIdx = getCovIdx $$(PlutusTx.compile [|| mkNetworkValidator ||])

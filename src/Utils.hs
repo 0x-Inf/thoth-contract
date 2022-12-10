@@ -53,7 +53,7 @@ credentialLedgerToPlutus (KeyHashObj (KeyHash h))       = Plutus.PubKeyCredentia
 
 stakeReferenceLedgerToPlutus :: Ledger.StakeReference StandardCrypto -> Maybe Plutus.StakingCredential
 stakeReferenceLedgerToPlutus (StakeRefBase x)                   = Just $ StakingHash $ credentialLedgerToPlutus x
-stakeReferenceLedgerToPlutus (StakeRefPtr (Ptr (SlotNo x) y z)) = Just $ StakingPtr (fromIntegral x) (fromIntergral y) (fromIntegral z)
+stakeReferenceLedgerToPlutus (StakeRefPtr (Ptr (SlotNo x) y z)) = Just $ StakingPtr (fromIntegral x) (fromIntegral y) (fromIntegral z)
 stakeReferenceLedgerToPlutus StakeRefNull                       = Nothing
 
 tryReadAddress :: String -> Maybe Plutus.Address
