@@ -262,7 +262,7 @@ Some mathematical notions:
 
 -- development notes for 21-22 Apr 2022 
  - The activate network off-chain compiles 
- - We still haven't figured a way to pass on the scriptAddress and spawn token to other contract using the return;
+ - We still haven't figured a way to pass on the scriptAddress and spawn token to other contract calls using the return;
  - Using writer for the above seems like a trivial next option but we really wanted to do it with return 
  - The checks for the validator of the network haven't still been implemented properly 
  - We still haven't figured more 'restrictive' checks
@@ -498,3 +498,30 @@ Development Notes 5 Dec 2022
     Unless we've momentarily only forgot about it. So this makes the design of the contract more interesting and potentially smaller than we had previously 
     thought. 
   - Think about time tokens and how they can be used in the Thoth Protocol. For definition(#Stolen)A time token can only be created if its asset name is a timestamp that is after the validation range upper bound.
+
+
+#Stolen [here](https://vitalik.ca/general/2022/01/26/soulbound.html); This idea of soulbound items could be applied to some knowledge items (If the researcher so wishes) so that they can only be 
+'attributed' to that researcher. To gain such status however the knowledge item has to achieve certain 'recognition' as a 'fundamental truth'.
+
+While reading a CIP on 'Smart NFTs' we came across this idea of sending tokens to oneself and then attaching extra data to the transaction so as to in 
+essence modify the NFT without necessarily funging it. With our approach to 'storing' knowledge as tokens we can use a similar idea but instead of using 
+metadata as the changing agent we use multi assets where changes occur when we append the original set of assets with ones that reflect the change. An 
+interesting thing happens here since researchers can append knowledge tokens with other researcher's tokens to reflect the combination of ideas, maybe even
+from different areas. For instance a physics researcher may use a new novel method from mathematics to solve a particular problem and the solution will be
+represented by the combination of the knowledge of the physics problem and the knowledge of the new mathematical technique to make this new 'token' which 
+is the solution. 
+Q : How does the researcher go about finding the token that represents some other piece of knowledge? One way is to use some sort of 'oracle' that can 
+search for the corresponding tokens to particular knowledge queries. 
+
+
+Development Notes 19 Jan 2023
+
+    - Reached the createResearcherPage stage of the 'account' creation. 
+    - Need to find a way to make the address of the globalThoth Script accessible.
+    - This could be done using an 'invite' mechanism where the existing researcher have to transfer an activeNetworkToken to newly coming researchers. 
+    - Next steps on testing (i.e write more comprehensive tests)
+    - Finish the researcher activation pipeline (actually this is done, so just testing and the universal and invite mechanism)
+
+
+## Interesting command for ghci 
+ghci> :set -ddump-splices

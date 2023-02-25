@@ -223,7 +223,7 @@ networkInitTrace = do
                                                     { researcherNickName              = researcherOneNickName
                                                     , researcherOwnAddress            = reOneAddr
                                                     , initializedResearcherToken      = initReToken
-                                                    , contribAmount                   = 5_000_000
+                                                    , contribAmount                   = 5_000_000 -- THis should not be hard-coded
                                                     , activateResearcherTokenName     = activateResearcherAssetTokenName
                                                     , activateResearcherTokenAmount   = 2
                                                     }

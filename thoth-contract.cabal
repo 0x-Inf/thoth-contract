@@ -11,7 +11,7 @@ homepage:       https://github.com/jaysonamati/thoth-contract#readme
 bug-reports:    https://github.com/jaysonamati/thoth-contract/issues
 author:         kovachs
 maintainer:     jaysonamati@gmail.com
--- copyright:      2022 Author name here
+-- copyright:      2023 Author name here
 license:        Apache-2.0
 license-file:   LICENSE
 build-type:     Simple
@@ -158,6 +158,7 @@ test-suite thoth-contract-test
   main-is: Spec.hs
   other-modules:
         ThothTestSpec.ThothNetworkCoreTest
+      , ThothTestSpec.ThothNetworkInitTest
   hs-source-dirs:
       test
   default-language: Haskell2010
@@ -177,5 +178,7 @@ test-suite thoth-contract-test
     , tasty-hunit
     , tasty-quickcheck
     , text
+    , plutus-script-utils
+    , plutus-ledger-api
 if !(impl(ghcjs) || os(ghcjs))
   build-depends: plutus-tx-plugin -any

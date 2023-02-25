@@ -400,7 +400,7 @@ and we could just remove some of them. This seems like it was an exercise in cre
                             first stage of initialization, the purpose of this token is that only this one researcher can be able to transition the
                             network to the next state. This token is also created at the network script address, since the token is unique this can 
                             ensure that there is only one valid Thoth network. The On-chain code currently does not enforce that there are only two 
-                            of these tokens but that could (should) be changed. 
+                            of these tokens but that could (should) be changed. Maybe it does with the minting policy.
  - spawnNetworkToken      : The token created at the script address after researcher zero has interacted with the network, it's like an acknowledgement 
                             that indeed the network exists and that one can interact with it. To fully express the semantics of the network at this state
                             we need to ensure that we make it a unique token that lives only at the script address. This is also used in the next transition as 
@@ -1115,6 +1115,7 @@ initializeResearcher rip = do
 
                     rAdaUtxos <- fundsAtAddressGeq researcherAddress (Ada.lovelaceValueOf 5_000_000)
                     scriptUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) activNToken >= 1) <$> utxosAt netScriptAddress
+                    
 
                     case Map.toList rAdaUtxos of
                        [(rAdaToref, rAdaTo)] -> do
@@ -1159,7 +1160,51 @@ initializeResearcher rip = do
                                     logInfo @String $ "Researcher active with token: " ++ (show activateReTokenVal)
                                     tell $ Last $ Just (activateReTAssetClass)
 
-                       orefs  -> Contract.logError @String $ "Utxos not right!!" ++ show orefs  -- TODO: handle for multiple txOrefs try using head
+                    --    orefs  -> Contract.logError @String $ "Utxos not right!!" ++ show orefs  -- TODO: handle for multiple txOrefs try using head
+                       orefs  -> do 
+                            let fstOref = head orefs
+                                (rAdaToref, rAdaTo) = fstOref
+                            Contract.logDebug @String $ printf "picked UTxo at" ++ (show rAdaToref) ++ "with value" ++ (show $ _ciTxOutValue rAdaTo)
+                            case Map.toList scriptUtxos of
+                                [(activeTknOref, activeTknO)] -> do
+                                    Contract.logDebug @String $ printf "picked UTxo at" ++ (show activeTknOref) ++ "with value" ++ (show $ _ciTxOutValue activeTknO)
+                                    let activateReTokenCurSym      = researcherInitializeTokenCurSym researcherAddress rAdaToref activeTknOref activeReTokenName activeReTokenAmt activateDeadline
+                                        activateReTokenPolicy      = researcherInitializeTokenPolicy researcherAddress rAdaToref activeTknOref activeReTokenName activeReTokenAmt activateDeadline
+                                        activateReTokenVal         = Value.singleton activateReTokenCurSym activeReTokenName activeReTokenAmt
+                                        activateReTAssetClass      = Value.assetClass activateReTokenCurSym activeReTokenName
+                                        oldActiveResearchers       = case nattr ^. activeResearchersTokens of
+                                                                          Nothing       -> 1
+                                                                          Just reNumber -> reNumber
+                                        nattr'                     = nattr & activeResearchersTokens .~ (Just (oldActiveResearchers + 1))
+                                        -- nattr'                     = nattr & activeResearchersTokens .~ (Just (oldActiveResearchers + 1))
+                                        activeReScriptSplit        = case splitTokenVal activateReTokenVal of
+                                                                          Nothing -> Value.singleton activateReTokenCurSym activeReTokenName 1
+                                                                          Just s  -> fst s
+                                        activeReResearcherSplit    = case splitTokenVal activateReTokenVal of
+                                                                          Nothing -> Value.singleton activateReTokenCurSym activeReTokenName 1
+                                                                          Just s  -> snd s
+                                        activeNTknVal              = _ciTxOutValue activeTknO
+                                        adaFromResearcherVal       = _ciTxOutValue rAdaTo
+                                        activateReScriptValPkg     = activeNTknVal <> activeReScriptSplit
+                                        activateReResearcherValPkg = adaFromResearcherVal <> activeReResearcherSplit
+                                        rZeroAddr                  = nattr ^. researcherZeroAddress
+                                        netValHash                 = fst (_ciTxOutValidator activeTknO)                                                                          
+                                    let lookups     = Constraints.typedValidatorLookups (typedNetworkValidator rZeroAddr)          <>
+                                                      Constraints.plutusV1MintingPolicy activateReTokenPolicy                              <>
+                                                      Constraints.plutusV1OtherScript (networkValidator rZeroAddr)                         <>
+                                                      Constraints.unspentOutputs (Map.singleton activeTknOref activeTknO)          <>
+                                                      Constraints.unspentOutputs (Map.singleton rAdaToref rAdaTo)
+                                        constraints = Constraints.mustMintValue activateReTokenVal                                   <>
+                                                      Constraints.mustSpendPubKeyOutput rAdaToref                                    <>
+                                                      Constraints.mustSpendScriptOutput activeTknOref (Redeemer $ PlutusTx.toBuiltinData (InitializeReseacher (researcherAddress, activateReTAssetClass)))  <>
+                                                    --   Constraints.mustPayToPubKey pkh activateReResearcherValPkg                                                                                               <>
+                                                      Constraints.mustPayToOtherScript netValHash (Datum $ PlutusTx.toBuiltinData (Active nattr')) activateReScriptValPkg
+
+                                    _ <- adjustAndSubmitWith @ThothNetwork lookups constraints
+                                    logInfo @String $ "Initialized researcher with address: " ++ (show researcherAddress)
+                                    logInfo @String $ "Researcher active with token: " ++ (show activateReTokenVal)
+                                    tell $ Last $ Just (activateReTAssetClass)
+                            
                 _ -> traceError "Didn't find appropriate datum"
 
 

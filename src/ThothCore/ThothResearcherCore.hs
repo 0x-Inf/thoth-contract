@@ -31,6 +31,7 @@ import           Control.Monad               hiding (fmap)
 import           Control.Lens                hiding (contains, to)
 import           Data.Aeson                  (FromJSON, ToJSON)
 import qualified Data.Map                    as Map
+import qualified Data.List                   as List 
 import           Data.Maybe                  as Maybe
 import           Data.Monoid                 (Last (..))
 import           Data.OpenApi.Schema         (ToSchema)
@@ -69,6 +70,7 @@ import           Text.Printf                 (printf)
 import           ThothCore.ThothNetworkCore
 import qualified Plutus.V1.Ledger.Api as V2API
 import qualified Plutus.V1.Ledger.Api as V2API
+import qualified Ledger.Value as Value
 
 
 type InitResTokenTxOutRef = TxOutRef
@@ -440,80 +442,84 @@ activateResearcher ActivateResearcherParams{..} = do
 
 
     adaUtxos <- fundsAtAddressGeq researcherAddr (Ada.lovelaceValueOf contrAmt)
-    case Map.toList adaUtxos of
-         [(adaOref, adaO)] -> do
-                Contract.logDebug @String $ printf "picked UTxo at" ++ (show adaOref) ++ "with value" ++ (show $ _ciTxOutValue adaO)
-                let contribVal  = Ada.lovelaceValueOf contrAmt
-                    resValAddr  = researcherScriptAddress researcherAddr
-                    resValHash  = validatorHash $ researcherValidator researcherAddr
-                    researcherState = ResearcherState
-                            {  _researcherValidatorScriptAddress = resValAddr
-                             , _researcherOwnedAddress           = researcherAddr
-                             , _researcherPkh                    = unPaymentPubKeyHash pkh
-                             , _researcherActiveToken            = Nothing
-                             , _researcherIdentifier             = researcherId
-                             , _researcherEffortToken            = Nothing
-                             , _researcherEfforValue             = Nothing
-                             , _researcherEffortMultiplier       = Nothing
-                             }
+    -- (adaOref, adaO) <- List.take 1 $ List.filter (\(adaOref, adaO) -> assetClassValueOf (_ciTxOutValue adaO) activNToken `Value.geq` (Value.assetClass Ada.symbol Ada.token contrAmt))
+    case Map.toList adaUtxos of 
+        [] -> do Contract.logError @String $ "Empty utxo list!"
+        adaInitOrefs -> do
+            case List.find (\(adaOref, adaO) -> _ciTxOutValue adaO `Value.geq` Value.assetClassValue (Value.assetClass Ada.adaSymbol Ada.adaToken) contrAmt) adaInitOrefs of
+                Nothing -> Contract.logError @String $ "Could not find suitable Utxo among: " ++ show adaInitOrefs
+                Just (adaOref, adaO) -> do 
+                        Contract.logDebug @String $ printf "picked UTxo at" ++ (show adaOref) ++ "with value" ++ (show $ _ciTxOutValue adaO)
+                        let contribVal  = Ada.lovelaceValueOf contrAmt
+                            resValAddr  = researcherScriptAddress researcherAddr
+                            resValHash  = validatorHash $ researcherValidator researcherAddr
+                            researcherState = ResearcherState
+                                    {  _researcherValidatorScriptAddress = resValAddr
+                                    , _researcherOwnedAddress           = researcherAddr
+                                    , _researcherPkh                    = unPaymentPubKeyHash pkh
+                                    , _researcherActiveToken            = Nothing
+                                    , _researcherIdentifier             = researcherId
+                                    , _researcherEffortToken            = Nothing
+                                    , _researcherEfforValue             = Nothing
+                                    , _researcherEffortMultiplier       = Nothing
+                                    }
 
-                let lookups        = Constraints.typedValidatorLookups (typedResearcherValidator researcherAddr)       <>
-                                     Constraints.plutusV1OtherScript (researcherValidator researcherAddr)                      <>
-                                     Constraints.unspentOutputs (Map.singleton adaOref adaO)
-                let constraints    = Constraints.mustSpendPubKeyOutput adaOref                                         <>
-                                     Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherState, Nothing))) contribVal
-                _ <- adjustAndSubmitWith @ThothResearcher lookups constraints
+                        let lookups        = Constraints.typedValidatorLookups (typedResearcherValidator researcherAddr)       <>
+                                            Constraints.plutusV1OtherScript (researcherValidator researcherAddr)                      <>
+                                            Constraints.unspentOutputs (Map.singleton adaOref adaO)
+                        let constraints    = Constraints.mustSpendPubKeyOutput adaOref                                         <>
+                                            Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherState, Nothing))) contribVal
+                        _ <- adjustAndSubmitWith @ThothResearcher lookups constraints
 
-                logInfo @String $ "The researcher has contributed: " ++ (show contribVal)
-                now <- currentTime
+                        logInfo @String $ "The researcher has contributed: " ++ (show contribVal)
+                        now <- currentTime
 
-                waitUnitlTimeHasPassed $ now + 5_000
-                now1 <- currentTime
+                        waitUnitlTimeHasPassed $ now + 5_000
+                        now1 <- currentTime
 
-                logInfo @String $ "TIme now is: " ++ show now1
+                        logInfo @String $ "TIme now is: " ++ show now1
 
 
-                initTokenUtxos <- Map.filter (\adaO -> assetClassValueOf (txOutValue $ toTxOut adaO) initAccessToken >= 1) <$> utxosAt researcherAddr
-                case Map.toList initTokenUtxos of
-                     [(initOref, initO)] -> do
-                            Contract.logDebug @String $ printf "picked Utxo at" ++ (show initOref) ++ "with value" ++ (show $ _ciTxOutValue initO)
+                        initTokenUtxos <- Map.filter (\adaO -> assetClassValueOf (txOutValue $ toTxOut adaO) initAccessToken >= 1) <$> utxosAt researcherAddr
+                        case Map.toList initTokenUtxos of
+                            [(initOref, initO)] -> do
+                                    Contract.logDebug @String $ printf "picked Utxo at" ++ (show initOref) ++ "with value" ++ (show $ _ciTxOutValue initO)
 
-                            scritpAdaUtxos <- fundsAtAddressGeq resValAddr (Ada.lovelaceValueOf contrAmt)
-                            case Map.toList scritpAdaUtxos of
-                                [(scrAdaOref, scrAdaO)] -> do
-                                        Contract.logDebug @String $ printf "picked UTxo at" ++ (show scrAdaOref) ++ "with value" ++ (show $ _ciTxOutValue scrAdaO)
-                                        researcherDatum <- getResearcherDatum scrAdaO
-                                        let activateResearcherTCurSym         = researcherActivateTokenCurSym researcherAddr scrAdaOref initOref activateTokenName activateTokenAmt
-                                            activateResearcherTPolicy         = researcherActivateTokenPolicy researcherAddr scrAdaOref initOref activateTokenName activateTokenAmt
-                                            activateResearcherTValue          = Value.singleton activateResearcherTCurSym activateTokenName activateTokenAmt
-                                            activateResearcherTAssetClass     = Value.assetClass activateResearcherTCurSym activateTokenName
-                                            researcherStateDatum              = case researcherDatum of
-                                                                                     Active (resState, _ ) -> resState
-                                            researcherStateDatum'             = researcherStateDatum & researcherActiveToken .~ (Just activateResearcherTAssetClass)
-                                            activScriptSplit                  = case splitTokenVal activateResearcherTValue of
-                                                                                    Nothing -> Value.singleton activateResearcherTCurSym activateTokenName 1
-                                                                                    Just s  -> fst s
-                                            activResearcherSplit              = case splitTokenVal activateResearcherTValue of
-                                                                                    Nothing -> Value.singleton activateResearcherTCurSym activateTokenName 1
-                                                                                    Just s  -> snd s
-                                            scriptAdaValue                    = _ciTxOutValue scrAdaO
-                                            scriptValPkg                      = activScriptSplit <> scriptAdaValue
-                                        let lookups'       = Constraints.typedValidatorLookups (typedResearcherValidator researcherAddr)       <>
-                                                             Constraints.plutusV1MintingPolicy activateResearcherTPolicy                               <>
-                                                             Constraints.plutusV1OtherScript (researcherValidator researcherAddr)                      <>
-                                                             Constraints.unspentOutputs (Map.singleton scrAdaOref scrAdaO)                     <>
-                                                             Constraints.unspentOutputs (Map.singleton initOref initO)
-                                            constraints'   = Constraints.mustMintValue activateResearcherTValue                                                                          <>
-                                                             Constraints.mustSpendPubKeyOutput initOref                                                                                  <>
-                                                             Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum', Nothing))) scriptValPkg          <>
-                                                             Constraints.mustSpendScriptOutput scrAdaOref (Redeemer $ PlutusTx.toBuiltinData (ActivateResearcher ((unPaymentPubKeyHash pkh) ,activateResearcherTAssetClass, initAccessToken, contrAmt)))
+                                    scritpAdaUtxos <- fundsAtAddressGeq resValAddr (Ada.lovelaceValueOf contrAmt)
+                                    case Map.toList scritpAdaUtxos of
+                                        [(scrAdaOref, scrAdaO)] -> do
+                                                Contract.logDebug @String $ printf "picked UTxo at" ++ (show scrAdaOref) ++ "with value" ++ (show $ _ciTxOutValue scrAdaO)
+                                                researcherDatum <- getResearcherDatum scrAdaO
+                                                let activateResearcherTCurSym         = researcherActivateTokenCurSym researcherAddr scrAdaOref initOref activateTokenName activateTokenAmt
+                                                    activateResearcherTPolicy         = researcherActivateTokenPolicy researcherAddr scrAdaOref initOref activateTokenName activateTokenAmt
+                                                    activateResearcherTValue          = Value.singleton activateResearcherTCurSym activateTokenName activateTokenAmt
+                                                    activateResearcherTAssetClass     = Value.assetClass activateResearcherTCurSym activateTokenName
+                                                    researcherStateDatum              = case researcherDatum of
+                                                                                            Active (resState, _ ) -> resState
+                                                    researcherStateDatum'             = researcherStateDatum & researcherActiveToken .~ (Just activateResearcherTAssetClass)
+                                                    activScriptSplit                  = case splitTokenVal activateResearcherTValue of
+                                                                                            Nothing -> Value.singleton activateResearcherTCurSym activateTokenName 1
+                                                                                            Just s  -> fst s
+                                                    activResearcherSplit              = case splitTokenVal activateResearcherTValue of
+                                                                                            Nothing -> Value.singleton activateResearcherTCurSym activateTokenName 1
+                                                                                            Just s  -> snd s
+                                                    scriptAdaValue                    = _ciTxOutValue scrAdaO
+                                                    scriptValPkg                      = activScriptSplit <> scriptAdaValue
+                                                let lookups'       = Constraints.typedValidatorLookups (typedResearcherValidator researcherAddr)       <>
+                                                                    Constraints.plutusV1MintingPolicy activateResearcherTPolicy                               <>
+                                                                    Constraints.plutusV1OtherScript (researcherValidator researcherAddr)                      <>
+                                                                    Constraints.unspentOutputs (Map.singleton scrAdaOref scrAdaO)                     <>
+                                                                    Constraints.unspentOutputs (Map.singleton initOref initO)
+                                                    constraints'   = Constraints.mustMintValue activateResearcherTValue                                                                          <>
+                                                                    Constraints.mustSpendPubKeyOutput initOref                                                                                  <>
+                                                                    Constraints.mustPayToOtherScript resValHash (Datum $ PlutusTx.toBuiltinData (Active (researcherStateDatum', Nothing))) scriptValPkg          <>
+                                                                    Constraints.mustSpendScriptOutput scrAdaOref (Redeemer $ PlutusTx.toBuiltinData (ActivateResearcher ((unPaymentPubKeyHash pkh) ,activateResearcherTAssetClass, initAccessToken, contrAmt)))
 
-                                        _ <- adjustAndSubmitWith @ThothResearcher lookups' constraints'
+                                                _ <- adjustAndSubmitWith @ThothResearcher lookups' constraints'
 
-                                        logInfo @String $ "Minted researcher activate token with value: " ++ (show activateResearcherTValue)
-                                        tell $ Last $ Just (activateResearcherTAssetClass, resValAddr)
-                     initOrefs -> do Contract.logError @String $ "Utxo set not right!!" ++ show initOrefs
-         adaInitOrefs -> do Contract.logError @String $ "Utxo set not right!!" ++ show adaInitOrefs
+                                                logInfo @String $ "Minted researcher activate token with value: " ++ (show activateResearcherTValue)
+                                                tell $ Last $ Just (activateResearcherTAssetClass, resValAddr)
+                            initOrefs -> do Contract.logError @String $ "Utxo set with accessTokens not right!!" ++ show initOrefs
 
 
 data CreateResearcherPageParams =
@@ -535,7 +541,7 @@ createResearcherPage CreateResearcherPageParams{..} = do
     let pageAddress    = researcherPageAddress
         researcherAddr = researcherOwnWalletAddress
         pageTokenName  = researcherPageTokenName
-        pageTokenAmt   = 1
+        pageTokenAmt   = 1                       -- This should not be hard-coded! 
 
 
     activeTokenUtxos <- Map.filter (\o -> assetClassValueOf (txOutValue $ toTxOut o) researcherActiveAccessToken >= 1) <$> utxosAt pageAddress

@@ -4,13 +4,17 @@ module Main
 
 -- import qualified Spec.Model
 import qualified ThothTestSpec.ThothNetworkCoreTest
-import           Test.Tasty
+import qualified ThothTestSpec.ThothNetworkInitTest
+import Plutus.Contract.Test
+import qualified Plutus.Trace.Emulator as Trace
+
+import Test.Tasty
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "token sale"
-    [ ThothTestSpec.ThothNetworkCoreTest.tests
+tests = testGroup "network Initialization"
+    [ ThothTestSpec.ThothNetworkInitTest.tests
     -- , Spec.Model.tests
     ]
