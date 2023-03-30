@@ -406,7 +406,7 @@ and we could just remove some of them. This seems like it was an exercise in cre
                             we need to ensure that we make it a unique token that lives only at the script address. This is also used in the next transition as 
                             the first true 'network token' to initialize the network. Q: What does it mean for the network to be initialized?
  - initializeNetworkToken : This is the first true contribution return to the researcher from the network. And it also signifies that the network is ready for 
-                            business. To get this token the zeroth research has to have also in their possesion the spawn network token. This token also created 
+                            business. To get this token the zeroth research has to have also in their possession the spawn network token. This token also created 
                             'using' a combination of a researcher's spawn token and the network script's spawn token. Since there are many of such tokens, the researcher
                             may at their behest transfer them to any address they would like or put them up for sale. The amount minted also depends on how many lovelace
                             they used to conjure the network. 
@@ -421,6 +421,11 @@ So at the final state of initialization, the scriptAddress will contain one valu
 works as of 4/8/2022 and the initial Researcher should have the same. 
 
 -}
+
+-- TODO : For InitTokens, we should add a mechanism to 'invite' other researchers to the network, this will be done when a new researcher activates their page 
+-- they will automatically mint an 'invite' token at their script address which they can send to another 'address' and they can use this token to activate 
+-- their page which then allows them to mint another set of 'invite' tokens and so on and so forth. This won't happen with the zeroth researcher since they 
+-- will use their activateNetwork tokens to activate themselves.
 
 makeLenses ''NetworkAttributes
 
@@ -1229,7 +1234,7 @@ initEndpoints = awaitPromise $ (initialize `select` conjure)
 activateEndpoint :: Contract (Last (Address, AssetClass)) ThothNetworkSchema Text ()
 activateEndpoint = awaitPromise $ endpoint @"activate" $ \nap -> do activateThothNetwork nap
 
-initializeResearcherEndpoint :: Contract (Last (AssetClass)) ThothNetworkSchema Text ()
+initializeResearcherEndpoint :: Contract (Last AssetClass) ThothNetworkSchema Text ()
 initializeResearcherEndpoint = awaitPromise $ endpoint @"researcherInitialize" $ \rip -> do initializeResearcher rip
 
 -- mkSchemaDefinitions ''ThothNetworkSchema

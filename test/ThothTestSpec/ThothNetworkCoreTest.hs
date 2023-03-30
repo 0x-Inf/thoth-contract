@@ -197,7 +197,7 @@ networkInitTrace = do
                                 void $ Emulator.waitNSlots 5
 
                                 let reAddr2            = mockWalletAddress w3
-                                    activateDeadline = slotToEndPOSIXTime def 10
+                                    activateDeadline   = slotToEndPOSIXTime def 10
 
                                 let rip = ResearcherInitializeParams
                                             { activeNetworkAccessToken    = activeToken

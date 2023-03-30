@@ -525,3 +525,10 @@ Development Notes 19 Jan 2023
 
 ## Interesting command for ghci 
 ghci> :set -ddump-splices
+
+
+3rd March 2023 
+
+It occurred to us that we've been approaching this whole problem from the 'wrong' perspective. We decided to start again and redesign the entire thing. 
+Most of the 'conceptual' and some technical notes from this document will be useful. 
+Reset time.... Yay !!!

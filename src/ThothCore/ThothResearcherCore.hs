@@ -290,6 +290,7 @@ type EffortToken = AssetClass
 -- | These are the actions of the researcher on their own script address. 
 --   They represent the semantics of the researcher in terms of knowledge creation and dissemination. 
 data ResearcherRedeemer = ActivateResearcher (PubKeyHash, ActivatedToken, InitializedToken, Integer)
+                        | MintActivateOtherResearcherToken
                         | Page (PageOption, PubKeyHash, EffortToken)
                         | Problems
                         | Conversations
