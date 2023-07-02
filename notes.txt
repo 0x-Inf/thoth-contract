@@ -1,4 +1,7 @@
-Thoth designing and planning:
+Thoth designing, planning and development:
+
+We've realized much later (date of this edit) that this whole thing is really about bringing science to everyone and enable participation from 
+everyone essentially (obviously this may not be achieved in practice) it's the p.c revolution but with science (from the internet). 
 
 Some Tenets to keep in mind during design
  - Openness
@@ -8,8 +11,16 @@ Some Tenets to keep in mind during design
  - Conversations among peers (P2P)
  - Inequality through effort 
  - Experimentation 
- - Resources
+ - Resources (Funding etc)
  - Collaboration 
+ - 'peer review' (this might be implicit with how the contract will work)
+ - 'Journals' (basically curations of knowledge)
+ - Accreditation (A peer can certify another peer but then it depends on which peer i.e can have strong or weak credits)
+ - Values system 
+ - Focus on Problems and the Efforts used for particular problems 
+
+Oracles will provided some needed real world data such as formal proofs (e.g mathlib, MMT) or calculations e.g from wolfram Math. Other data we might need 
+inludes existence of data sets etc ...
 
 The design of the contract would be mainly done using petrinets, this is because they provide an simple visual guide which is appealling 
 and more importantly we can formalize the petri net using tools from category theory. This will ensure that the design is not only correct
@@ -20,15 +31,504 @@ Thoth Development:
 
 The development will occur during several phases:
 
- - Developing and testing the contract in cardano blockchain 
- - Developing and testing the User application ('Wallet') 
+ - Developing and testing the contract in cardano blockchain.
+ - Developing and testing the User application i,e weirdly interfaced web app.
  - Extending the contract to other blockchains (i.e E.V.Ms, Algorand, Tron, Tezos, Klatyn)
 
 
 Some ideas on imlementation
  - We'll have that each 'researcher' have a page (this might correspond to a script address with collection of tokens and datum representing the work)
+   later: The datum is really for specifying how other researchers can interact with the work represented by the tokens (Maybe script addresses).
  - The overall Thoth page (basically the knowledge) will consist of two parts, the page itself which will host the main Thoth token (Multi asset token)
    and an oracle which would provide a datum for a 'knowledge value' and  every time a change happens it updates this value. (The researcher will reference this value for any transaction)
+   later: See in development notes how the networkCore differs from the above.
  - This knowledge value will also be used for the 'energy platform updates' which happen at 'every epoch' where the values of researcher's work is mappended by a multiplier (this would represent how valuable this work is to the knowledge) 
     (one can think about this as a sun and a planet with life forms where the life form that 'converts the most information' is 'winning')
  - Every researcher's page would drive what the researcher would see on the front end (i.e It would be a different interface (except for common platform elements)) 
+ - Have that the 'main Thoth Token' script carry a datum (ThothState) that represents the current state of knowledge where it maybe a monad that 
+   carries the context of ___ . We might need the Monad instance for this since we want the benefits of it acting like an Applicative and also a Functor.
+   It's sort of like the State Monad but instead of the context being a computation, it's a ____ ('knowledge representation')
+
+A note about plutus This is nothing else than a state machine, where our datum represents the state and the redeemer the state transition. Expanding this 
+to our optics look on bidirectional processes would imply that there is some information which will be relevant to the current state of the script token 
+which can be found in the future, since during validation we have the value of the outputs both before and after the transaction this can be implemented 
+'trivially' in the network. 
+
+The front-end would be displaying some datum which is found by consuming transaction. We might have to jump through some hoops to get to the datum in the off-chain code, particularly 
+if we are in the midst of constructing some transactions.
+
+Random Idea: It occurred to us that the whole reason consensus protocols reduce the incentive to cheat (or act in ways that harm others) is through monetary 
+penalties, this is because there is a mapping between the consensus 'reward' tokens and 'real-world' monetary measures. This gives a market driven valuation on 
+the penalties one might incur if they don't act in accordance with the protocol ways. Given this, we can acsertain that there will be fluctuasions on how much 
+actual real life damages a rogue actor might incur. This brings up an interesting question on how to effectively guard this using formal mean more precisely, 
+Is there a formal construction to specify damages such that they are robust to 'real-world' changes? A naive way to do this would be to assume that there is no 
+mapping between the reward token and any real-world entities, i.e the only thing that exists is the reward token itself. This could work in that ideal world 
+we have painted above but as it stands this is not the case, hence a more nuanced approach is required. This is an interesting problem and well worth the effort.
+
+
+To minmize the transaction costs involved we'll try and minimize the tokens send (<= min-tr-fee) by using a single native asset when using the front-end, 
+this means that we need a way to store what changes can happen to utxos and mappend them to one token. 
+
+The bulk of the operations will try and utilise the producing of UTxos instead of spending them to reduce the chances of congestion where multiple 
+users try to spend one UTxo. The schemes that involve spending UTxos will have to expect very few users to be spending specific UTxos concurrently.
+For instance we could spend Utxos when updating our user Token since we expect that only the user will ever want and can spend that UTxo. When interacting 
+with for instance messages, producing UTxo seems more appropriate as we have one for each atomic change(interaction...?). 
+In other words operations in the Thoth world would most likely be UTxo producing transactions rather than consuming 
+
+The effort thing we'll be 'measuring' will be useful in seing what problems people are putting Resources into and this will help guide what goals as a 
+species we would like to achieve. This will aid in clear thinking. 
+
+
+Thoth Core 
+
+-- This will act like a factory for relevant tokens, and use this to have a relationship network of the tokens. For instance suppose I create a researcher 
+'account' by minting the relevant token then the oracle might create a script address where the minted token's pkh is authorized to 'spend'. This now will
+become where the researcher will make their updates. Once updates are made the user makes another request to the oracle to 'sync' the updates and this will
+require paying some 'oracle' fees. That's one function for the oracle
+
+the peer oracle can be a script address where the peer can mint tokens corresponding to event in the 'real-world' which can be translated to a transaction. 
+the thoth oracle would be for presenting a unified view of the represented events of the peers (synced or not)
+
+Can have someone set up a script address like an continuous faucet for n tokens where they can allow certain pkhs to spend in a certain interval. Like it's
+a timed bank.
+
+'Dynamic' courts of first knowledge (\phi). Here the users can create courts which specialize in certain knowledge types and one can submit a collection 
+of items and the court can decide if the items are first knowledge or not... among other features. 
+
+We'll use the datum at some utxos to specify how a researcher interacts with specific parts of the network. For instance say a researcher x is browsing 
+in the funding section then they open a pool and approve a proposal to fund a certain problem. Then that chain of interactions which will involve minting 
+or spending a utxo(if you've interacted before). These tokens which are located in the researchers page (script address that can only be spent by one 
+pubkeyhash) will keep getting 'morphed' as the transactions happen. E.g one could start with an "open-pool token" that has datum of 1 (no of times this user
+has opened this pool) and then after approving a proposal end up with the same 'open-pool token' (scriptHash) but with a different datum perhaps 1 and the 
+proposal voted on. 
+
+Once we have the thothCore oracle, we'll use it to create the researcher's pages and keep a reference of the partcular researcher in the thothcore oracle 
+so as to enable syncing later, since this thothcore oracle would be used to hold the 'universal state' of Thoth network(the details of how this will work 
+exactly are still getting worked out). Once a researcher(pkh) has an 'oracle' (script address) of their own then they can spend and produce utxos at this 
+script address which will correspond to the activities they have done in the network. To reduce the number of transactions that will be required in any 
+session we'll 'bundle' up the necessary changes so that we're in the end constructing only one transaction (if possible) other alternatives include 
+'contunuation' series of the contract monad (I'm not sure this would work, have to check). or use a single utxo belonging to a researcher that carries different
+tokens that represent the actions the person took while on a session. Aparently according to a blog post on haskellforall,
+you can use this(continuation Monad) to condense the callback API of a framework into a single point of entry.
+
+We can try and model the interaction between researchers as interacting dynamical system and then the overall network as a 'juxtaposition' of the 
+sub-systems(researchers)
+
+What's the largest number of addresses we can store in a datum for a utxo?? When a researcher creates their script address they also leave a reference(Maybe 
+a scriptAddressHash) that corresponds to the researcher which can be used by the same researcher to 'update' the network state. This can be formalized and 
+perhaps even implemented as a lens (optic in general). When researchers interact they also leave each other 'references'.
+
+If we can't store a lot of addresses in a utxo as datum then we need another way to reference all the researchers in the 'global' network state. 
+
+From the front end we'll assemble a JSON representation of all the actions (transitions) we have performed and then use some code to convert it to 
+api calls to the pab which will can be converted to a single call. 
+Now for the maintanance of the state that one can render on a front end, the goal is to keep up with the changes in the researchers pages. So for the 
+DOM we'll have it be created from states of the 'contract' i.e from what the user is interacting with. For instance if a user is looking at the 
+labs 'page' then at the 'backend' they'll be a state data structure that is only 'revealing' the necessary parts of the entire state which would correspond
+to information that is relevant to the labs page, e.g a list of all labs etc etc
+
+The combination of spending, minting and burning e-utxos with different validators (i.e a set of constraints for building a transaction and the lookups the 
+transaction needs) can lead to specification of weird real-world interactions, with the way the Contract is defined as a monad a programmer is encouraged
+to think of interesting solutions to the constraints of the system they are writing programs for. Constraints lead to novel 'properties' (e.g evolution of 
+organisms on earth) ... P.s This could be a blog-post (Just a rant about plutus, cardano and haskell(Maybe some C.T too))
+
+-- On a cool tangent, we can have people mint 'park' tokens only when they have 'spend' some 'effort' tokens. An analog to this in a money system where 
+there is money available to be minted (but with a limiting fn) so in our case the fn is checking some parameters such as supply, flux, easing coeff, etc 
+Put another way, the more effort you've put, the more you can mint and hence 'expand' your interface. But even with no effort one can mint but only 
+limitedly. Much much later: Actually for the sake of network semantics, a researcher who has contributed more and has gained tokens representing his 
+contributions simply uses the tokens to interact with the 'knowledge spheres' in which he has contributed. For instance in the real world if one doesn't know about 
+a topic in say chemical engineering they first have to interact with some information on chemical engineering and then with this get an 'interface' to interact with 
+other areas and people involved in chemical engineering.
+
+The thothCore will grow its number of utxos over time, so they'll be a lot of value locked in the address(es). We can use this value as a fund to make 
+some operations in the network cheaper (already paid for, this will probably include minting transactions which deposit the token in the script address).
+But the question of how many utxos can we store in a single script address. If it is limiting we might have to think of a way to have the same effect 
+without using one script address (and idea is to have one main "routing" script address which contains the scriptHashes of other script address where 
+we can spend or mint tokens from/to ) 
+-- This implies a way to do dynamics of utility, sacrifice etc, so 'early' network adopters will benefit from being able to mint a lot but they 
+pay alot also since the pools don't have stray ada utxos to reduce cost of certain transactions, but the late network users wont be able to mint a lot 
+but a lot of the transactions they would want to do are essentially free. That's one way of going around the minAda problem.(encouraging free usage)
+
+
+A scheme would work to determine how many people get to freely 'live' at a given moment (i,e free transactions) depending on some network statistics.
+
+It just occured to us that instead of using datum to drive UI we can use transaction metadata for the utxos that we have at any given time.
+So pressing on some buttons simply changes the state of the UI and new components are rendered. 
+
+There are two states that are of relevance to the working of the network
+ - 1. The Local Researcher state. This is the script address (state machine) that contains the utxos and associated datums of researcher, It can 
+      be updated by the researcher or other researchers or the thoth network address. The researcher can both spend and produce Utxos at this address,
+      this could correspond to operations such as creating a notebook, a blog post, a thought, attending a court session, request funding, join conversation,
+      vote for ... , add page section, add page tags etc etc, Another researcher can produce utxos at this address also, this could be to accomplish 
+      p2p operations such as, give creditation, read note, read blog, propose an edit etc etc. The Network address(es) can also interact with the 
+      address of a researcher. This could be to produce effort tokens in the researcher's address... (We're not sure if there's going to be a 
+      network address at this time, because we could easy use the juxtaposition of the researcher's pages.. this would make the platform 'more decentralized')
+
+   2. The global state. This will be the amalgamation of all the information in the individual researcher's pages (para script addresses). This 
+      will probably be done by some rs since it will involve making a lot of requests and appatently Rust is good at that sort of thing. 
+      The global state will the defacto thoth network and this is what most people (researchers or not) will be interacting with.
+
+(from code)-- some attempt to make thoth network datum
+-- an idea is to have each researcher page have this every time they change stuff
+-- another idea is to have a global one which is updated by the researchers who wish for their changes to be refrected(this will inolved producing utxo at the network script address)
+-- The idea of having this global state of the thoth network is orthorgonal to Cardano's accounting model i.e having a central global state is discouraged 
+   by design.
+
+We should find a way to simulate a 'global-state' by utilizing the researcher's independent script addresses locking some utxos representing thier activities. 
+
+
+The contributions argument
+  -- The thoth network is like a 'organization' of contributions which is made up of other 'oragnizations' of contributions of various researchers 
+     and their organizations are made up of various contruibutions some 'singular' and others organizations as wel. This stuff will work in the fashion
+     of operads where certain coherence conditions must be satisfied
+
+
+On Thoth Network Redeemer 
+ -- Can multiple pkhs be signatories to the transaction that initializes the network??
+
+
+- Development notes: April 4th 2022:
+-- Made the validation fn for activating and initializing the 'network' address. Will need to update it to cover more.... 
+-- Some Maybe issues include the supposed appearance of two separate scripts, maybe this is because of parametrization or a bug in the emulator...
+-- Testing scafolding seems to work except coverage... also need to include more tests for the validators and off-chain code done today
+-- On reading a blog post about scalability, there seems to be already existing patterns to deal with the concurrency issue of the Utxo based blockchain,
+   we might adapt some or design ones if our use cases require it.
+-- Make a more 'comprehensive' minting policy for the main Thoth Token.
+
+
+We need to find a way to send tokens to a pkh the current owner directly or indirectly controls i,e they can spend tokens from. 
+
+The 'essence' is creating and propagating knowledge. All the 'features' are interfaces of trying to accomplish that end. 
+
+concurrency is both in the 'network' level and also at the 'researcher' level. 
+
+
+- Development notes: April 9-10th 2022:
+ -- Made a revamp of the network initialization procedure (i.e the validator datum and redeemer combinations). This includes now a spawn phase which is 
+    essentially the first transaction that involves the network script address. This process should (at the time of writing the minting wasn't really working)
+    also mint some spawn tokens and given them to the spawner and also some to the script 
+ -- ALso we need a scheme for deriving assetclasses from already existing ones so as to start creating a 'trail' of tokens so as to record activity. 
+    This could also be used with some datum for some tokens in the script address so as to 'consider' more information. 
+ -- Start thinking of ways to prevent pkhs to willy nilly intialize other networks, only make it so that the network can be initialized only once. (probably
+    would involve the validator... obviously)
+ -- Since we need to record 'new knowledge' and also the 'propagation' of it, in these initialization step we consider having a universal 'Effort/knowledge' 
+    token which is sent to contributing addresses after they have changed the state of the 'network' validator.
+ -- Think more on the concurrency 'hack' especially as we draw closer to implimenting initResearcher redeemer and the transaction involved. 
+ -- So far we haven't included a good datum 'strategy' to help mantain the state of the network validator. 
+ -- Implement all the validator checks properly and start writing tests and 'rogue off-chain' code to check whether they can be broken or mishandled. Considering 
+    the network script address will likely hold a lot of value in terms of the native 'computational token' and also the knowledge and effort value tokens, we
+    need to ensure that absolutely only authorized spends are allowed, while also ensuring that the network remains scalable. 
+ -- Find a good split of the off-chain code for the series of transactions that lead to the network being fully active. i.e does the spawn and init need to be 
+    in the same off-chain action. 
+ -- Keep in mind how the off-chain part would be interacting with the front facing part of the 'platform'
+ -- There was an error and also hafly implemented fns that need to be reworked and as always optimization when we stopped coding on 10 th. 
+ -- The validator is starting to look huge and we've only done two transitions, think of other ways to get the same functionality using Maybe different network 
+    Validators for different 'classes' of activity, or a good set of checks that gives the same gurantees but with fewer computations. 
+ -- Remember memory and compute are factors when dealing with the validator, we should aim to make it as optimized as possible. (Don't optimize prematurely)
+ -- We need to put some thought into the minting policies of the tokens involved in the initialization process. The current implementation only contains some 
+    simple rules, which are not particularly informative about what the network is trying to achieve.
+
+
+
+Some mathematical notions: 
+  -- We need to show how the network essentially grows and ensures that the contributions made by people interacting with it are 'represented' in the networks 
+     state. Some ideas would be using operads as mentioned above especially in conjuction with poly dynamical systems.. 
+  -- Just to mention Poly would provide a good formalization of our network and help us reason about the scale and concurrency properties of it. This together 
+     with the E-Utxo model which gives us certain guarantees about the transactions and how they affect each other will greatly help with checking primary 
+     'computational (correctness etc etc)' of our network and how it operates.  
+
+
+
+-- development notes for 15 Apr 2022 (written the next day)
+ - The network attributes are now part of the datum of the network script address, this might prove to be a good idea or not; only 'time'(more development)
+   will tell 
+ - The conjure and spawn actions of the network state have provided a good way to model reward of the said actions; this might be modelled differently for 
+   other interaction interfaces 
+ - Attempts at setting up a private test net we're not successfully completed; 
+ - An idea of implementing the network datum as a lens (or optic) is still brewing, this is especially useful as the state would be changing with most of 
+   the interactions, especially when multiple researchers begin to interact with the network.
+ - The testing work-flow has been set up and works as intented; the tests included so far are non-sensical. 
+ - A problem with the testing suite that we have is that we haven't figure out yet how to test for the tokens we are minting that have non-trivial symbols.
+   Think about this some more 
+ - The validator checks for the spawn action should be enhanced to prevent haphazard spawning of the network i.e only two entities should have the spawn and 
+   conjure tokesn (networkScript and researcherZero). 
+ - Think about other validator checks for the rest of the initialization process. Further, consider whether it is benficial to only have one true network or 
+   multiple 'networks' that may in aggregate be seen as 'one' or Maybe seen as entirely different networks. 
+ - Something else that constantly came up is whether the Contract monad for the off-chain part should return anything or making use of the writer part of the 
+   monad to expose information about consequences of actions to the outside world. Think about potential benefits of this and what kind of information we should 
+   return. And also with benefits there are always potential problems so think on those too. 
+ - Start thinking more on the interface the off-chain provides and how it shapes how knowledge is created and propagated. 
+
+
+-- development notes for 21-22 Apr 2022 
+ - The activate network off-chain compiles 
+ - We still haven't figured a way to pass on the scriptAddress and spawn token to other contract calls using the return;
+ - Using writer for the above seems like a trivial next option but we really wanted to do it with return 
+ - The checks for the validator of the network haven't still been implemented properly 
+ - We still haven't figured more 'restrictive' checks
+ - We also need to figure out proper returns formulas for contributing to the initialization of the network; this means that the token minting 
+   policies need to reflect these returns and also the validator checks 
+ - The testing suite is still not comprehensive for the mints 
+ - We noticed that we could add more lookups to make spending from the script even more secure, of course this will go hand in hand with the validator. 
+
+ -- development recap for 27 Apr 2022
+  - Found out that we could make multiple endpoints for the contract 'calls'(this was obvious...don't know how we missed it)
+  - We need to modify a check so as to check that a token has been send to a particular address.
+
+
+-- development notes for 28-29 Apr 2022 
+ - Made the checks for Initializing the network more robust 
+ - Also made the minting policy for the activate network token 
+ - While doing the above there was this idea of 'infinitely splitting' the active network token every time a researcher uses it to create a researcher token 
+   that they can use for their researcher script 'actions'
+ - Further, for the researcher script we need to have a 'lineage' for the contributions of the researcher and Maybe also link it to the 'rewards'. The reason 
+   for doing this is that we can have a 'chain of knowledge', we also need to find a way to associate this with other researcher's contributions relative to 
+   the current researcher. 
+ - Find a way to get the return of the contract monad in the emulator trace testing and also think about how to get this information from the real world 
+   blockchain. (Turns out the writer part of the monad allows us to do exactly this)
+ - Refine the checks for activating the network to ensure that anyone (any pkh) after the network has been activated can interact with the network script address 
+   so as to 'create' their script addresses. This will also come with some concurrency concerns so that is something to think about. 
+ - Again start thinking of how the off-chain code will actually be used with the 'front-end' (We mean its literally the front end but....)
+ - Start thinking about the 'properties' of the effort tokens, knowledge tokens etc. 
+ - We made an observation that since the Integer type provided by haskell can handle infinite numbers then we can morph the tokens that we create to represent 
+   network and researcher interaction in infinite many ways.(This ties well with the below idea of script trees(Maybe acyclic graphs) of relations)  
+   
+
+-- development notes 5 May 2022 
+  - In making the activeTokens from which researchers can get their active tokens we've encountered a potential problem where we don't know the 'true state'
+    this is useful as it helps the script know the correct amount to mint so as to prevent collisions of spending utxos 
+  - Made the activate Researcher part of the network
+  - The nitty girities don't work as expected but we'll work on them 
+  - A problem is where we have multiple utxos for minting the activateResearcher Token 
+  - We need to think more on the concurrency aspect of the network script; given now that many addresses might want to activate Researcher at the same time 
+  - And also 'feedback' messages from the researcher's script to the network script; information obtained from these relations might be useful.
+  - Think on how 'effort' should be calculated and also how it will be represented in the script (both network and researcher)
+
+-- Implementation ideas 
+
+An idea for a use-scenario is where you have some 'collection of knowledge' (which some in this day would call a paper) and is viewable in expert mode 
+where you have different kinds of interactions compared to when you are in say casual mode where you are presented with similar information but then in 
+'lay-man' form; here is where we can use the conversational features to incentivize engagement and also question asking and answering and also linking with 
+knowledge from other sources such as arxiv;(math...)overflow etc 
+
+-- controlling who is able to mint what tokens and maybe also the amt of those tokens is a good way to model some of the semantics of a knowledge 'repository'
+
+Script trees... for showing which 'knowledge points' are linked; they can be trees or graphs. In the points we'll just specify the relations, we will probably 
+have to show that given all the relations there is 'complete Knowledge Graph' of the entire network. An idea of a proof is using the yoneda lemma where 
+we model the scripts (knowledge points) as objects and their specified relations as morphisms and we show that if you know how the object relates to all 
+other objects then you know the object and if you do this for all (sounds like the use of ends and coends) objects they you have some notion of 
+'complete information'. 
+
+When implementing the bounties section we could steal some ideas from the escrow thing; where we have targets for the 'payouts' and a designated pkh. Given that 
+the bounties are for problems and questions  (e.g millenium prize problems) there would a knowledge verification stage (basically a vote(Maybe); Here the hunter would 
+provide 'evidence' (some tokens that represent the answers or findings) and given the criteria given for bounty completion some 'witnesses' may vote on whether the 
+criteria has been met by available evidence). This seems like it comes down to multiple contracts in 'one' where we have voting, some escrowy thing, etc...
+
+collectFromScriptFilter is a good way to get the right utxos from some address; this could be useful in concurrency where we only spend some utxos which 
+have certain datums.... Maybe. Think on how to use this some more. 
+
+There is this concept of tokenAccounts where we could use AssetClasses to represent ownershipt (or roles) in a contract. This could be useful in scenarios 
+such as funding where we want to record who owns what, for instance in a funding pool.(since one can fund different 'items'). This could also be used to 
+store how many researchers are active in the network (there could be a list in the datum of the associated script)
+
+Making custom errors for our network and the associated actions, follow the style of the Futures contract in the plutus-use-cases example 
+
+See if you can add tokens with 'custom' datums to the script address. For instance we can have the researcher tokens have datums that might be used to 
+uniquely identify a researcher; this will be useful in reducing the chances of spend collisions as every researcher would be in essence spending a unique 
+utxo.
+
+We could have a governance thing going such that it will enable 'voting' for various aspects of the network. For instance we could have that the 'courts' are 
+essentially where someone submits a 'knowledge proposal' and some 'designated voters'(Volunteers who get some token in return).There are some ideas of using 
+a 'formal' engine to 'vote' for some knowledge proposals(especially mathematical ones). Since we have natively the knowledge represented a some (Maybe Token)
+the researcher can submit a collection of these tokens to signify what knowledge they want to 'create' after 'voting'. Also instead of voting we could have 
+post-contributions where depending on some agreed upon (through a vote) criteria the contributions can meet then the knowledge is created. An example is where 
+some scientists agree that for some ideas to be considered knowledge then their 'collective'(contributions and init 'proposal') has to consist of some 
+interactions... and then the 'reward' would be the 'knowledge token' or non if the criteria is not met by the collective. 
+
+Multisigs would be useful in situations such as bounties of funding pools where multiple people need to sign off before transfer of tokens. With the 
+multisigStateMachine in plutus-use-cases we can even make it such that we can add the signatories as we go and also propose to make payments; in projects 
+this would also come in handy in payouts after project completion or during the stages of the project where some resources are required and they are locked
+by some signatories; also Accreditation can benefit from this especially high assurance credits where they are released if certain pkh have signed associated 
+transactions. Adding some item to a certain collection might also require signing off by the collection owners (in the case where there are multiple). Also 
+decisions to join fellowships (essentially getting an 'access' token) can be made by multiple parties. 
+
+
+dev notes (brief session + some earlier research) 14 May 2022
+  - Most of the checks for network validation are implemented and work as intended... (remembered this later)
+  - Don't remember what was about to write.
+
+some work done 15 May 2022
+  - Made the 'scafolding' for the researcher core file. Have good feeling about this one. 
+
+Some thoughts 20 May 2022
+  - There is a way in which the contributions can be seen as 'recipes' in the minecraft game (or rather the categorical representation). So when interacting 
+    with the network it's like creative mode but for real-life knowledge.
+  - Open spending to get data. i.e given a particular script at an address any wallet can spend a specified information token by given the correct redeemer etc.
+    This seems like it would be a good way to collate data.
+
+
+
+Development notes 22 May 2022
+  - The first iteration of the activate researcher action was done, this included minting some tokens and changing the datum.
+  - The next problem is figuring out how to handle contributions and rewards in a way that encodes the actions of the researchers on the network and also 
+    to their personal scripts. 
+  - The tokens 'interactions' (i.e spending and minting (Maybe burning)) should ensure that the knowledge tree is well represented; the idea is to have this 
+    last for a while and be truly universal. 
+  - We should be able to compose a researcher's contribution representation with another researcher's in a way that the composed object is also a valid 
+    knowledge representation (like the way the presentation about knowledge representation using petri nets) and also include the 'resultant knowledge' from 
+    interactions between the two researchers. 
+  - In a way the challenge is to take a resource theory and the dynamical systems collectives construction in Poly and merge it with a version of this petri 
+    net formalization.(There is a way to construct a petri net using props and props are used for circuit diagrams... certain knowledge is represented using 
+    a specific circuit diagram and one can combine or change the diagram (Maybe using the collective tools)).
+
+Development notes 26 May 2022
+  - There was this idea of putting the several 'fns' of the network as separate scripts with validators where a researcher does actions from those 'global' 
+    scripts and then calls corresponding actions on their script to sync with relevant changes. This will require carefull consideration of how to implement these 
+    global scripts so as to minimize chances of utxo collisions and also fees. 
+  - The other way to do the above is to have each researcher have their own fns script and then within it have a 'sync' action that updates a global 'fns' script 
+  - We'll want to use the datum to calculate the amount of effort tokens to 'reward' creation and dissemination of knowledge. (Make it really hard to mint depending
+    on whether we are creating knowledge or copying it)
+  - Every action station could have its own 'mint'(MintingPolicy) which says how much the action contributes to the knowledge.... 
+
+Development notes 27 May 2022 
+  - For the representation of the knowledge tree in the scripts, we could have certain outputs to store in their datums the information about the current 
+    piece the script is holding and a pointer to another piece(or pieces depending on txSize limitations) that consistently 'join' with other parts in 
+    other scripts. The entire tree can then be created through off-chain  code by iterating on the current datumhashes to get new ones to get some more 
+    until there are no more references. 
+
+
+Development notes 29 May 2022 
+  - The structure described in the note above could be implemented using a traversal type of structure. where we have an ordering that is calculated based 
+    on some datum present in a script utxo, we could also go through it and 'mod' it. Since we can have polymorphic container then we can have different 
+    types. 
+  - Made the validator option of creating a page... still working out the particulars of the edit page. 
+
+
+Development notes 30 May 2022 
+  - Realized that one can use multiple datums on the same script (surprised that we hadn't noticed we could do this), check the uniswap implementation on 
+    plutus-use-cases for a good example.
+  - At some point soon we might have to formalize these notes (write tex code)
+  - Also since we have implemented most of what is required for the 'base' of the network, this is a good point in development to look back at what we 
+    have done and ensure that everything behaves as it's supposed to. We'll also need to rework areas of the design that don't conform to the implementation
+    and also use this base to (re)design the 'bulk'(i.e all the action spaces) of the network. 
+  - On working on the researcher page, we've realised that we need to go back to the design board and specify the page and interactions of a researcher and 
+    also other researchers with the page. 
+  - For the effort multiplier..., some action are going to include a flag which shows that the multiplier needs to be updated. For instance the create page 
+    action will mint an effort token and change the multiplier based on what it was before in the datum and the 'action value' of creating a researcher page.
+  - Made the initial steps for the researcher page interaction. 
+  - Find a way to separate the emulator traces for the network activities and the researcher script stuff.
+  - There is a weird thing that happens in the emulator trace 'tests' where a contract call is skipped. (It's badly nested so that might be the cause...)
+  - The build as of commit time works, although there are a few kinks to iron out. 
+  - Also think about how to collect data from distributed sources to form one unified view of all the data with certain guarantees such as temporal coherence,
+    dependency adherance (Where on source is 'derived' from another). This will be used in creating the universal knowledge tree from the researchers personal 
+    trees. 
+  - Added some types for interacting with the researcher's page. Just from the ones we've written it seems the validator will have a lot of options... might need 
+    to start thinking about size limits etc... 
+
+
+Development notes 31 May 2022 
+  - While watching the video on collectives by spivak, there is this idea that has come to mind. Since we are modelling our network as a collective (in Poly), 
+    then we are using the contributions idea where the researchers contribute knowledge then the feedback from the overall network is distributed to the 
+    researchers in a way that respects their contribution. In particular we have the scripts for the researchers as the inner systems which output their 
+    positions and these are combined in some way to form the networks output, then upon getting input (basically interactions in the front-end) there could 
+    be a way the researcher could 'collect' the distributed feedbacks. 
+  - An interesting problem is what happens when the state (network position) changes before particular researchers collect their inputs.... 
+
+
+Implementation idea 22 Jun 2022 
+  - We could find a way to 'encode' propositions and proofs as asset classes in the cardano protocol. This would enable researcher's to 'attach' their work 
+    to the blockchain as assets. They could also be used in downstream tasks such as proposals for funding, composed papers, etc. 
+  - Mathematically this corresponds to finding a map between types since with dependent type systems (those underlying functional languages) propositions are types 
+    and also the AssetClass for the cardano blockchain is also a type. 
+
+Abstraction concept 27 Jun 2022
+  - There is certain construction that david spivak refers to as an olog that he uses as a way to structure knowledge. Given that our project is about knowledge 
+    representation, this could be a good way to check if indeed our platform is indeed a semantic representation of the world's knowledge. Could we find a suitable 
+    map between the formalization that our 'contract' provides and the olog construction. On the surface this seems like it would be possible, it's straightforward to 
+    find categorical representations of the plutus language and hence the kind of app made using it, it seems therefore that finding a map betweeen the two aforementioned 
+    constructions would follow easily. This is just a hand-wavy argument and further investigation would shed more light. 
+  - In reading further about why spivak came up with the concept of ologs, it seems that he was attempting something similar to what this project is about, he was trying 
+    to in his words "I hoped I could get real people to upload their ideas into what is now called the cloud." We are doing the same but we are trying to get people to 
+    put their knowledge to a blockchain, which is similar to a cloud but the data is available across the nodes that make up the network. 
+  - This is a finer point for development. In our design we have a interaction 'titled' conversation where people would be able to share knowledge with each other in a 
+    'quantifiable' way. Spivak uses a simplicial complex of ologs to talk about this sharing of knowledge. If we can find a way to relate our system to ologs 
+    then we can in principle find a simplicial complex of 'a part of our system' which would ideally correspond to the conversation interaction. 
+  - The thing a about beauty driving creation, instead of goodness or truth. Is this a good thing to implement in our system? The value of aesthetic?
+  - Spivak says "I define ones knowledge to be accurate as the extent to which, when he uses this knowledge to direct his actions, he has good luck handling his worldly affairs." 
+    Here we replace actions with transactions as we are working in a blockchain context. Since transactions in this particular blockchain carry Utxos as inputs, this could 
+    represent the 'knowledge pieces' that drive the action(s) (transaction(s)).
+  - The olog formalism gives a restriction that we must find a 'common ground' in order to interact with someone, we are not sure if we should include this 
+    restriction when implementing the conversation interaction.(It's not particularly a technical issue, given that we are mostly implementing validators for transactions adding 
+    restrictions is kind of trivial(not really, but yes). The problem is that doing this might be in conflict with the Openness tenet). On the flip side this seems like a 
+    natural way to ensure organic growth of knowledge without too much 'trolling'. Further this is the sentiment given by spivak as he argues that since the accurate 
+    knowledge is what various people would interact with then, naturally truth would be upheld. We hope that he gives mathematical support for this argument as it would convince 
+    us to adopt the idea and also give justification for the system design. 
+
+Implementation thoughts 1 July 2022 
+  - We should be able to support 'machine' participation right from the design of the system. By machine participation we mean a scenario where we have enlisted 
+    computers to help explore the knowledge space and thus participate in the discovery of new knowledge. Since we can't assume that machines would be motivated by
+    the same things that we humans are motivated by, this would mean that the contribution and 'reward' mechanisms need to account for this. It's an interesting design 
+    and also technical problem of how to accomplish this, especially now where the 'thinking machines' we have now are not as capable as to warrant their inclusion 
+    in a knowledge system like the present one. 
+
+
+Development Notes 4 August 2022 
+  - There is an idea that maybe the blockchain queueing of transactions might help with the concurrency problem but I'm not sure how this would work. This 
+    doesn't necessarily get rid of the congestion problem. See previous ideas for inspiration on ways forward.
+  - Looked at the old code we had written and there was a problem with paying the initial researcher the activate Researcher token minted from the 
+    activate Researcher action of the network script. Essentially it leads to downward failure of the researcher transactions. 
+  - Find a way to use the new ScriptContext with the amount of gas fees the validating transaction pays. 
+  - The minting Policy for the effort Token is vacuous and doesn't carry any semantics
+  - We need to think about what it would take for a researcher to get the value of the effort token.
+
+
+# After a long-ass break and adventures into the world of HoTT and Category Theory 
+
+Development Notes 28 Nov 2022 
+  - Updated some of the core code to include the latest Plutus V2 version 
+  - Had an interesting time in figuring out what some of the code was doing. This hints at a better way to document the code. The already existing documentation helped a bunch, highlighting further the importance of documenting code.
+  - The testing is really "rubbish"(Using Emulator traces....), please write more 'suitable' tests using specs and some of the testing libs we had seen earlier. 
+  - There seems to be a lot of repetitive patterns in the off-chain code, find a way to abstract this... not sure if state machines are perfomant enough to do this yet.
+  - There is a lot of work to be done still in the validators to better implement the semantics of the program. 
+  - Also read the researcher work ih heavily underdeveloped!!!
+
+
+Development Notes 5 Dec 2022
+  - We have recently come across an article that says that a script address could potentially hold UTXOs with different datums. This was somehow missed before
+    Unless we've momentarily only forgot about it. So this makes the design of the contract more interesting and potentially smaller than we had previously 
+    thought. 
+  - Think about time tokens and how they can be used in the Thoth Protocol. For definition(#Stolen)A time token can only be created if its asset name is a timestamp that is after the validation range upper bound.
+
+
+#Stolen [here](https://vitalik.ca/general/2022/01/26/soulbound.html); This idea of soulbound items could be applied to some knowledge items (If the researcher so wishes) so that they can only be 
+'attributed' to that researcher. To gain such status however the knowledge item has to achieve certain 'recognition' as a 'fundamental truth'.
+
+While reading a CIP on 'Smart NFTs' we came across this idea of sending tokens to oneself and then attaching extra data to the transaction so as to in 
+essence modify the NFT without necessarily funging it. With our approach to 'storing' knowledge as tokens we can use a similar idea but instead of using 
+metadata as the changing agent we use multi assets where changes occur when we append the original set of assets with ones that reflect the change. An 
+interesting thing happens here since researchers can append knowledge tokens with other researcher's tokens to reflect the combination of ideas, maybe even
+from different areas. For instance a physics researcher may use a new novel method from mathematics to solve a particular problem and the solution will be
+represented by the combination of the knowledge of the physics problem and the knowledge of the new mathematical technique to make this new 'token' which 
+is the solution. 
+Q : How does the researcher go about finding the token that represents some other piece of knowledge? One way is to use some sort of 'oracle' that can 
+search for the corresponding tokens to particular knowledge queries. 
+
+
+Development Notes 19 Jan 2023
+
+    - Reached the createResearcherPage stage of the 'account' creation. 
+    - Need to find a way to make the address of the globalThoth Script accessible.
+    - This could be done using an 'invite' mechanism where the existing researcher have to transfer an activeNetworkToken to newly coming researchers. 
+    - Next steps on testing (i.e write more comprehensive tests)
+    - Finish the researcher activation pipeline (actually this is done, so just testing and the universal and invite mechanism)
+
+
+## Interesting command for ghci 
+ghci> :set -ddump-splices
+
+
+3rd March 2023 
+
+It occurred to us that we've been approaching this whole problem from the 'wrong' perspective. We decided to start again and redesign the entire thing. 
+Most of the 'conceptual' and some technical notes from this document will be useful. 
+Reset time.... Yay !!!

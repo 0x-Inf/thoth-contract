@@ -25,3 +25,7 @@ cabal.project.local~
 result*
 .envrc
 .vim
+designs/images/
+notes.md
+specs/SpecificationAlpha.md
+assets

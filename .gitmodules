@@ -1,0 +1,3 @@
+[submodule "cardano-private-testnet-setup"]
+	path = cardano-private-testnet-setup
+	url = https://github.com/woofpool/cardano-private-testnet-setup.git

@@ -6,12 +6,12 @@ cabal-version: 2.4
 
 name:           thoth-contract
 version:        0.1.0.0
--- description:    Please see the README on GitHub at <https://github.com/githubuser/thoth-contract#readme>
--- homepage:       https://github.com/githubuser/thoth-contract#readme
--- bug-reports:    https://github.com/githubuser/thoth-contract/issues
-author:         Author name here
-maintainer:     example@example.com
--- copyright:      2022 Author name here
+description:    Please see the README on GitHub at <https://github.com/jaysonamati/thoth-contract#readme>
+homepage:       https://github.com/jaysonamati/thoth-contract#readme
+bug-reports:    https://github.com/jaysonamati/thoth-contract/issues
+author:         kovachs
+maintainer:     jaysonamati@gmail.com
+-- copyright:      2023 Author name here
 license:        Apache-2.0
 license-file:   LICENSE
 build-type:     Simple
@@ -47,37 +47,69 @@ source-repository head
   location: https://github.com/githubuser/thoth-contract
 
 library
-  import: lang
   exposed-modules:
-      NFT
+        ThothCore.ThothNetworkCore
+      , ThothCore.ThothResearcherCore
+      -- , ThothCore.ThothPAB
+      -- , Plutus.Contract.Test.Coverage.ReportCoverage
   hs-source-dirs:
       src
   build-depends:
-      base >=4.9 && <5,
-      aeson,
-      bytestring,
-      containers,
-      freer-extras,
-      text,
-      playground-common,
-      plutus-contract,
-      plutus-tx-plugin,
-      plutus-tx,
-      plutus-ledger,
+      ------------------------
+      -- Non-IOG dependencies
+      ------------------------
+        base >=4.9 && <5
+      , aeson
+      , bytestring
+      , containers
+      , data-default
+      , freer-extras
+      , openapi3
+      , text
+      , formatting
+      , QuickCheck
+      , lens
+      , serialise
+      , prettyprinter
+      , html-entities
+      , tasty
+      , tasty-hunit
+
+      --------------------------
+      -- IOG dependencies
+      --------------------------
+  build-depends:
+      , cardano-api
+      , cardano-crypto-class
+      , cardano-ledger-core
+      , cardano-ledger-shelley
+      , cardano-wallet-core
+      , playground-common
+      , plutus-core
+      , plutus-contract
+      , plutus-tx-plugin
+      , plutus-tx
+      , plutus-pab
+      , plutus-use-cases
+      , plutus-ledger
+      , plutus-ledger-api
+      , plutus-ledger-constraints
+      , plutus-script-utils
   default-language: Haskell2010
+  ghc-options:      -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-spec-constr -fno-specialise
   
 
--- executable thoth-contract-exe
---   main-is: Main.hs
---   other-modules:
---       Paths_thoth_contract
---   hs-source-dirs:
---       app
---   ghc-options: -threaded -rtsopts -with-rtsopts=-N
---   build-depends:
---       base >=4.7 && <5
---     , thoth-contract
---   default-language: Haskell2010
+executable thoth-contract-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_thoth_contract
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.9 && <5
+    , thoth-contract
+  default-language: Haskell2010
 
 executable thoth-contract-app
   import: lang
@@ -85,7 +117,7 @@ executable thoth-contract-app
   hs-source-dirs: app
   ghc-options:
     -threaded
-  build_depends: 
+  build-depends: 
     base >= 4.9 && < 5,
     data-default -any,
     plutus-contract -any,
@@ -100,147 +132,53 @@ executable thoth-contract-app
 
 executable thoth-contract-pab
   import: lang
-  main-is: Main.hs
+  main-is: thoth-pab.hs
   hs-source-dirs: pab
   ghc-options:
     -threaded
   build-depends:
     base >= 4.9 && < 5,
-    data-default -any,
-    plutus-contract -any,
-    plutus-pab -any,
-    thoth-contract -any,
-    aeson -any,
-    freer-simple -any,
-    prettyprinter -any,
-    freer-extras -any,
-    plutus-ledger -any,
-    openapi3 -any,
+    data-default,
+    plutus-contract,
+    plutus-pab,
+    thoth-contract,
+    aeson,
+    freer-simple,
+    prettyprinter,
+    freer-extras,
+    plutus-ledger,
+    openapi3,
+    bytestring, 
+    text, 
+    plutus-use-cases, 
+
 
 test-suite thoth-contract-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_thoth_contract
+        ThothTestSpec.ThothNetworkCoreTest
+      , ThothTestSpec.ThothNetworkInitTest
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , thoth-contract,
-    tasty -any,
-    tasty-hunit -any,
-    tasty-hedgehog >=0.2.0.0
-  build-depends: 
-    plutus-tx -any,
-    plutus-tx-plugin,
-    plutus-contract -any,
-    plutus-ledger -any,
   default-language: Haskell2010
-
-
-
-
-
-
-
-
-
--- -- From plutus-starter
-
--- cabal-version:      2.4
--- name:               plutus-starter
--- version:            0.1.0.0
-
--- -- A short (one-line) description of the package.
--- -- synopsis:
-
--- -- A longer description of the package.
--- -- description:
-
--- -- A URL where users can report bugs.
--- -- bug-reports:
-
--- license: Apache-2.0
--- license-files: LICENSE
--- author:             Your name
--- maintainer:         Your email
-
--- -- A copyright notice.
--- -- copyright:
--- -- category:
--- -- extra-source-files: CHANGELOG.md
-
--- flag defer-plugin-errors
---     description:
---         Defer errors from the plugin, useful for things like Haddock that can't handle it.
---     default: False
---     manual: True
-
--- common lang
---     default-language:   Haskell2010
---     ghc-options:
---       -Wall -Wnoncanonical-monad-instances
---       -Wincomplete-uni-patterns -Wincomplete-record-updates
---       -Wredundant-constraints -Widentities -rtsopts
---       -- See Plutus Tx readme
---       -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
---     if flag(defer-plugin-errors)
---         ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
--- library
---     import: lang
---     exposed-modules:
---       MyModule
---       Plutus.Contracts.Game
---     build-depends:
---       base >= 4.9 && < 5,
---       aeson,
---       bytestring,
---       containers,
---       freer-extras,
---       playground-common,
---       plutus-contract,
---       plutus-tx-plugin,
---       plutus-tx,
---       plutus-ledger,
---     hs-source-dirs: src examples/src
-
--- test-suite plutus-example-projects-test
---   import: lang
---   type: exitcode-stdio-1.0
---   main-is: Spec.hs
---   hs-source-dirs: examples/test
---   other-modules:
---     Spec.Game
---   build-depends:
---     plutus-tx -any,
---     plutus-tx-plugin,
---     plutus-contract -any,
---     plutus-ledger -any,
---     plutus-starter -any
---   build-depends:
---     base >=4.9 && <5,
---     tasty -any,
---     tasty-hunit -any,
---     tasty-hedgehog >=0.2.0.0
-
--- executable plutus-starter-pab
---   import: lang
---   main-is: Main.hs
---   hs-source-dirs: pab
---   ghc-options:
---     -threaded
---   build-depends:
---     base >= 4.9 && < 5,
---     data-default -any,
---     plutus-contract -any,
---     plutus-pab -any,
---     plutus-starter -any,
---     aeson -any,
---     freer-simple -any,
---     prettyprinter -any,
---     freer-extras -any,
---     plutus-ledger -any,
---     openapi3 -any,
-
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+  build-depends:
+      base ^>=4.14.1.0
+    , containers
+    , data-default
+    , freer-extras
+    , lens
+    , plutus-contract
+    , plutus-ledger
+    , thoth-contract
+    , plutus-tx
+    , QuickCheck
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+    , text
+    , plutus-script-utils
+    , plutus-ledger-api
+if !(impl(ghcjs) || os(ghcjs))
+  build-depends: plutus-tx-plugin -any
